@@ -36,4 +36,9 @@ DBP = Namespace('http://dbpedia.org/ontology/')
 GEO = Namespace('http://www.w3.org/2003/01/geo/wgs84_pos#')
 
 # Directory Service Ontology
-#DSO = Namespace('http://www.semanticweb.org/directory-service-ontology#')
+DSO = Namespace('http://www.semanticweb.org/directory-service-ontology#')
+
+# ECSDI Ontology Namespace
+ONTO = Namespace('http://www.semanticweb.org/nilde/ontologies/2024/4/#')
+
+FONTO = Namespace('http://localhost:3030/nilde/ontologies/2024/4/#')
