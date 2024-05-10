@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pedido - Sistema ECSDI</title>
+    <style>
+        .content {
+            text-align: center;
+        }
+        .active {
+            background-image: linear-gradient(to top, #fffbf9 0%, #97c4ff 100%);
+            height: 100vh;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
+        table {
+            width: 60%;
+            margin-left: auto;
+            margin-right: auto;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        input[type="text"], input[type="submit"] {
+            width: 90%;
+            padding: 12px;
+            margin: 8px 0;
+            display: inline-block;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input[type="submit"] {
+            width: auto;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+        input[type="submit"]:hover {
+            background-color: #45a049;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body class="active">
+<div class="content">
+    {% if products %}
+    <h1>Confirmar pedido</h1>
+    <form method="post">
+        <table>
+            <tr>
+                <th>Seleccionar</th>
+                <th>Producto</th>
+                <th>Marca</th>
+                <th>Precio</th>
+                <th>Valoración</th>
+            </tr>
+            {% for p in products %}
+            <tr>
+                <td><input type="checkbox" name="checkbox" value="{{ loop.index0 }}"></td>
+                <td>{{ p.name }}</td>
+                <td>{{ p.brand }}</td>
+                <td>{{ p.price }}€</td>
+                <td>{{ p.rating }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <input type="text" name="city" placeholder="Ciudad" required>
+        <input type="text" name="priority" placeholder="Prioridad de entrega (1, 2 o 3)" required>
+        <input type="text" name="creditCard" placeholder="Tarjeta de crédito" required>
+        {% if campos_error %}
+        <p class="error">Por favor, asegúrate de llenar todos los campos y seleccionar al menos un producto.</p>
+        {% endif %}
+        <input type="submit" name="submit" value="Comprar">
+    </form>
+    {% elif bill %}
+    <h1>Resumen de la compra</h1>
+    <table>
+        <tr><th>Producto</th><th>Precio</th></tr>
+        {% for p in bill.products %}
+        <tr>
+            <td>{{ p.name }}</td>
+            <td>{{ p.price }}€</td>
+        </tr>
+        {% endfor %}
+        <tr><td>Total</td><td>{{ bill.total }}€</td></tr>
+    </table>
+    <p>Dirección de entrega: {{ bill.city }}</p>
+    <p>Prioridad de entrega: {{ bill.priority }}</p>
+    <p>Número de tarjeta: {{ bill.creditCard }}</p>
+    {% endif %}
+    <a href="/">Volver a inicio</a>
+</div>
+</body>
+</html>

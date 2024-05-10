@@ -3,6 +3,9 @@ from rdflib import Graph, Literal, URIRef, RDF, XSD, Namespace
 from rdflib.namespace import FOAF, RDF
 import logging
 import requests
+from Utils.OntoNamespaces import FONTO
+
+from Utils.ACLMessages import build_message
 
 FUSEKI_SERVER = "http://localhost:3030"  # Cambia esto por la URL de tu servidor Fuseki
 DATASET_NAME = "myDataset"  # Cambia esto por el Nom de tu dataset en Fuseki
@@ -36,8 +39,6 @@ ServeiBuscador = Agent(
 
 app = Flask(__name__)
 
-# Namespace para la ontología utilizada (ajustar según sea necesario)
-ONT = Namespace("http://www.owl-ontologies.com/OntologiaECSDI.owl#")
 
 
 def process_action(gm, msgdic):
@@ -46,7 +47,7 @@ def process_action(gm, msgdic):
     """
     content = msgdic['content']
     action = gm.value(subject=content, predicate=RDF.type)
-    if action == ONT.BuscarProductes:
+    if action == FONTO.BuscarProductes:
         return handle_search_products(gm, content)
     else:
         return build_message(Graph(), 'not-understood', ServeiBuscador.uri, ServeiBuscador.get_count())
@@ -57,18 +58,18 @@ def handle_search_products(gm, content):
     Procesa la petición de búsqueda de productos aplicando las Restriccioes dadas.
     """
     restrictions = {}
-    for restriction in gm.objects(content, ONT.RestringidaPor):
-        if gm.value(restriction, RDF.type) == ONT.RestriccioMarca:
-            restrictions['Marca'] = str(gm.value(restriction, ONT.Marca))
-        elif gm.value(restriction, RDF.type) == ONT.RestriccioNom:
-            restrictions['Nom'] = str(gm.value(restriction, ONT.Nom))
-        elif gm.value(restriction, RDF.type) == ONT.RestriccioPreu:
-            min_price = gm.value(restriction, ONT.PreuMin)
-            max_price = gm.value(restriction, ONT.PreuMax)
+    for restriction in gm.objects(content, FONTO.RestringidaPor):
+        if gm.value(restriction, RDF.type) == FONTO.RestriccioMarca:
+            restrictions['Marca'] = str(gm.value(restriction, FONTO.Marca))
+        elif gm.value(restriction, RDF.type) == FONTO.RestriccioNom:
+            restrictions['Nom'] = str(gm.value(restriction, FONTO.Nom))
+        elif gm.value(restriction, RDF.type) == FONTO.RestriccioPreu:
+            min_price = gm.value(restriction, FONTO.PreuMin)
+            max_price = gm.value(restriction, FONTO.PreuMax)
             restrictions['PreuMin'] = float(min_price)
             restrictions['PreuMax'] = float(max_price)
-        elif gm.value(restriction, RDF.type) == ONT.RestriccioValoracio:
-            restrictions['Valoracio'] = float(gm.value(restriction, ONT.Valoracio))
+        elif gm.value(restriction, RDF.type) == FONTO.RestriccioValoracio:
+            restrictions['Valoracio'] = float(gm.value(restriction, FONTO.Valoracio))
 
     # Realiza la búsqueda de productos según las Restricciones procesadas
     results = search_products(restrictions)
@@ -159,13 +160,13 @@ def build_response_graph(results):
     g = Graph()
     for result in results:
         prod_uri = URIRef(result['uri'])
-        g.add((prod_uri, RDF.type, ONT.Producte))
-        g.add((prod_uri, ONT.Nom, Literal(result['Nom'])))
-        g.add((prod_uri, ONT.Preu, Literal(result['Preu'], datatype=XSD.decimal)))
-        g.add((prod_uri, ONT.Marca, Literal(result['Marca'])))
-        g.add((prod_uri, ONT.Categoria, Literal(result['Categoria'])))
-        g.add((prod_uri, ONT.Pes, Literal(result['Pes'], datatype=XSD.decimal)))
-        g.add((prod_uri, ONT.Valoracio, Literal(result['Valoracio'], datatype=XSD.decimal)))
+        g.add((prod_uri, RDF.type, FONTO.Producte))
+        g.add((prod_uri, FONTO.Nom, Literal(result['Nom'])))
+        g.add((prod_uri, FONTO.Preu, Literal(result['Preu'], datatype=XSD.decimal)))
+        g.add((prod_uri, FONTO.Marca, Literal(result['Marca'])))
+        g.add((prod_uri, FONTO.Categoria, Literal(result['Categoria'])))
+        g.add((prod_uri, FONTO.Pes, Literal(result['Pes'], datatype=XSD.decimal)))
+        g.add((prod_uri, FONTO.Valoracio, Literal(result['Valoracio'], datatype=XSD.decimal)))
     return g
 
 
