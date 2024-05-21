@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>ECSDI - Búsqueda de Productos</title>
+    <link rel="icon" href="https://lh3.googleusercontent.com/-c9bKgaRfC3Q/AAAAAAAAAAI/AAAAAAAAJUE/Eo2MLCqyiZs/s0-c-k-no-ns/photo.jpg">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to top, #fffbf9 0%, #97c4ff 100%);
+            color: #333;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            width: 90%;
+            max-width: 800px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            margin-top: 20px;
+        }
+        input[type="text"], input[type="submit"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin: 5px 0;
+            box-sizing: border-box;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+        }
+        input[type="submit"] {
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+        input[type="submit"]:hover {
+            background-color: #45a049;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Búsqueda de productos</h1>
+        <p>Usuario activo: {{ usuario }}</p>
+        {% if not products or busquedafallida %}
+        <form method="post">
+            <input type="text" name="name" placeholder="Nombre del producto">
+            <input type="text" name="brand" placeholder="Marca">
+            <input type="text" name="minPrice" placeholder="Precio mínimo">
+            <input type="text" name="maxPrice" placeholder="Precio máximo">
+            <input type="text" name="valoracionminima" placeholder="Valoración mínima (0-5)">
+            <input type="submit" name="submit" value="Buscar">
+            {% if busquedafallida %}
+            <p style="color:red;">No se han encontrado productos con esas restricciones.</p>
+            {% endif %}
+            {% if errorvaloracio %}
+            <p style="color:red;">La valoración debe estar dentro del rango 0-5.</p>
+            {% endif %}
+        </form>
+        {% else %}
+        <form method="post">
+            <table>
+                <tr>
+                    <th></th>
+                    <th>NOMBRE</th>
+                    <th>MARCA</th>
+                    <th>PRECIO</th>
+                    <th>VALORACIÓN</th>
+                </tr>
+                {% for p in products %}
+                <tr>
+                    <td><input type="checkbox" name="checkbox" value="{{ loop.index0 }}"></td>
+                    <td>{{ p.name }}</td>
+                    <td>{{ p.brand }}</td>
+                    <td>{{ p.price }}</td>
+                    <td>{{ p.rating }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+            <input type="text" name="city" placeholder="Ciudad">
+            <input type="text" name="priority" placeholder="Prioridad de entrega (1, 2 o 3)">
+            <input type="text" name="creditCard" placeholder="Tarjeta de crédito">
+            <input type="submit" name="submit" value="Comprar">
+        </form>
+        <form method="post">
+            <input type="submit" name="submit" value="Volver al inicio">
+        </form>
+        {% endif %}
+    </div>
+</body>
+</html>
