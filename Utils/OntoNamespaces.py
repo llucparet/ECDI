@@ -40,5 +40,3 @@ DSO = Namespace('http://www.semanticweb.org/directory-service-ontology#')
 
 # ECSDI Ontology Namespace
 ONTO = Namespace('http://www.semanticweb.org/nilde/ontologies/2024/4/#')
-
-FONTO = Namespace('http://localhost:3030/nilde/ontologies/2024/4/#')
