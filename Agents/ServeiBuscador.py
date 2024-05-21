@@ -3,42 +3,55 @@ from rdflib import Graph, Literal, URIRef, RDF, XSD, Namespace
 from rdflib.namespace import FOAF, RDF
 import logging
 import requests
-from Utils.OntoNamespaces import FONTO
 
-from Utils.ACLMessages import build_message
+from Agents.AgentAssistent import ServeiBuscador
+from Utils.ACL import ACL
+from Utils.Agent import Agent
+from Utils.Logger import config_logger
+from Utils.OntoNamespaces import ONTO
 
-FUSEKI_SERVER = "http://localhost:3030"  # Cambia esto por la URL de tu servidor Fuseki
-DATASET_NAME = "myDataset"  # Cambia esto por el Nom de tu dataset en Fuseki
+from Utils.ACLMessages import build_message, get_message_properties
+import random
+import socket
+import sys
+from multiprocessing import Queue, Process
+from flask import Flask, request
+from pyparsing import Literal
+from rdflib import XSD, Namespace, Literal, URIRef
 
-# Configuración del logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('ServeiBuscador')
+FUSEKI_SERVER = "http://localhost:3030/ONTO/query"
+DATASET_NAME = "myDataset"
 
+logger = config_logger(level=1)
 
-# Configuración inicial del agente
-class Agent:
-    def __init__(self, name, uri, address, stop):
-        self.name = name
-        self.uri = uri
-        self.address = address
-        self.stop = stop
-        self.message_count = 0
+# Configuration stuff
+hostname = socket.gethostname()
+port = 9010
 
-    def get_count(self):
-        self.message_count += 1
-        return self.message_count
+agn = Namespace("http://www.agentes.org#")
 
+# Contador de mensajes
+mss_cnt = 0
 
-# Creación del agente
-ServeiBuscador = Agent(
-    'ServeiBuscador',
-    'http://www.agentes.org#ServeiBuscador',
-    'http://localhost:5000/comm',
-    'http://localhost:5000/Stop'
-)
+# Datos del Agente
+AgBuscadorProductos = Agent('AgBuscadorProductos',
+                            agn.AgenteSimple,
+                            'http://%s:%d/comm' % (hostname, port),
+                            'http://%s:%d/Stop' % (hostname, port))
 
+# Global triplestore graph
+dsgraph = Graph()
+
+cola1 = Queue()
+
+# Flask stuff
 app = Flask(__name__)
 
+
+def get_count():
+    global mss_cnt
+    mss_cnt += 1
+    return mss_cnt
 
 
 def process_action(gm, msgdic):
@@ -47,7 +60,7 @@ def process_action(gm, msgdic):
     """
     content = msgdic['content']
     action = gm.value(subject=content, predicate=RDF.type)
-    if action == FONTO.BuscarProductes:
+    if action == ONTO.BuscarProductes:
         return handle_search_products(gm, content)
     else:
         return build_message(Graph(), 'not-understood', ServeiBuscador.uri, ServeiBuscador.get_count())
@@ -58,18 +71,18 @@ def handle_search_products(gm, content):
     Procesa la petición de búsqueda de productos aplicando las Restriccioes dadas.
     """
     restrictions = {}
-    for restriction in gm.objects(content, FONTO.RestringidaPor):
-        if gm.value(restriction, RDF.type) == FONTO.RestriccioMarca:
-            restrictions['Marca'] = str(gm.value(restriction, FONTO.Marca))
-        elif gm.value(restriction, RDF.type) == FONTO.RestriccioNom:
-            restrictions['Nom'] = str(gm.value(restriction, FONTO.Nom))
-        elif gm.value(restriction, RDF.type) == FONTO.RestriccioPreu:
-            min_price = gm.value(restriction, FONTO.PreuMin)
-            max_price = gm.value(restriction, FONTO.PreuMax)
+    for restriction in gm.objects(content, ONTO.RestringidaPor):
+        if gm.value(restriction, RDF.type) == ONTO.RestriccioMarca:
+            restrictions['Marca'] = str(gm.value(restriction, ONTO.Marca))
+        elif gm.value(restriction, RDF.type) == ONTO.RestriccioNom:
+            restrictions['Nom'] = str(gm.value(restriction, ONTO.Nom))
+        elif gm.value(restriction, RDF.type) == ONTO.RestriccioPreu:
+            min_price = gm.value(restriction, ONTO.PreuMin)
+            max_price = gm.value(restriction, ONTO.PreuMax)
             restrictions['PreuMin'] = float(min_price)
             restrictions['PreuMax'] = float(max_price)
-        elif gm.value(restriction, RDF.type) == FONTO.RestriccioValoracio:
-            restrictions['Valoracio'] = float(gm.value(restriction, FONTO.Valoracio))
+        elif gm.value(restriction, RDF.type) == ONTO.RestriccioValoracio:
+            restrictions['Valoracio'] = float(gm.value(restriction, ONTO.Valoracio))
 
     # Realiza la búsqueda de productos según las Restricciones procesadas
     results = search_products(restrictions)
@@ -111,7 +124,7 @@ def build_sparql_query(restrictions):
     base_query = """
     PREFIX ns: <http://www.owl-ontologies.com/OntologiaECSDI.owl#>
     SELECT ?producto ?Nom ?Preu ?Marca ?Valoracio WHERE {
-        ?producto rdf:type ns:Producto.
+        ?producto rdf:type ns:Producte.
         ?producto ns:Nom ?Nom.
         ?producto ns:Preu ?Preu.
         ?producto ns:Marca ?Marca.
@@ -153,6 +166,7 @@ def parse_sparql_results(results):
         parsed_results.append(producto)
     return parsed_results
 
+
 def build_response_graph(results):
     """
     Construye un grafo RDF con los resultados de la búsqueda para enviar como respuesta.
@@ -160,29 +174,36 @@ def build_response_graph(results):
     g = Graph()
     for result in results:
         prod_uri = URIRef(result['uri'])
-        g.add((prod_uri, RDF.type, FONTO.Producte))
-        g.add((prod_uri, FONTO.Nom, Literal(result['Nom'])))
-        g.add((prod_uri, FONTO.Preu, Literal(result['Preu'], datatype=XSD.decimal)))
-        g.add((prod_uri, FONTO.Marca, Literal(result['Marca'])))
-        g.add((prod_uri, FONTO.Categoria, Literal(result['Categoria'])))
-        g.add((prod_uri, FONTO.Pes, Literal(result['Pes'], datatype=XSD.decimal)))
-        g.add((prod_uri, FONTO.Valoracio, Literal(result['Valoracio'], datatype=XSD.decimal)))
+        g.add((prod_uri, RDF.type, ONTO.Producte))
+        g.add((prod_uri, ONTO.Nom, Literal(result['Nom'])))
+        g.add((prod_uri, ONTO.Preu, Literal(result['Preu'], datatype=XSD.decimal)))
+        g.add((prod_uri, ONTO.Marca, Literal(result['Marca'])))
+        g.add((prod_uri, ONTO.Categoria, Literal(result['Categoria'])))
+        g.add((prod_uri, ONTO.Pes, Literal(result['Pes'], datatype=XSD.decimal)))
+        g.add((prod_uri, ONTO.Valoracio, Literal(result['Valoracio'], datatype=XSD.decimal)))
     return g
 
 
 @app.route("/comm", methods=['POST'])
 def communication():
-    """
-    Communication entry point for the agent.
-    """
-    logger.info('Request received at /comm')
-    data = request.data
-    gm = Graph()
-    gm.parse(data=data)
+    try:
+        data = request.data
+        gm = Graph()
+        gm.parse(data=data)
+        msgdic = get_message_properties(gm)
+        if not msgdic:
+            raise ValueError("Mensaje no entendido")
 
-    msgdic = {}  # Suponemos que esta función extrae las propiedades del mensaje correctamente
-    gr = process_action(gm, msgdic)
-    return gr.serialize(format='xml'), 200
+        if msgdic['performative'] != ACL.request:
+            raise ValueError("Performative no es request")
+
+        # Procesa la acción según el contenido del mensaje
+        content = msgdic['content']
+        gr = process_action(gm, content)
+        return gr.serialize(format='xml'), 200
+    except Exception as e:
+        logger.error(f"Error processing request: {str(e)}")
+        return build_message(Graph(), ACL['not-understood'], sender=ServeiBuscador.uri).serialize(format='xml'), 400
 
 
 @app.route("/Stop", methods=['GET'])
