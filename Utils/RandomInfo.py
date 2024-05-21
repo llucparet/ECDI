@@ -44,6 +44,7 @@ if __name__ == '__main__':
         for _ in range(20):
             product_id = generate_id()
             category = cat
+            valoracion = round(random.uniform(1, 5), 2)
             if category == "Phone":
                 brand = random.choice(brands)
                 name = random_name(brand)
@@ -70,6 +71,7 @@ if __name__ == '__main__':
             g.add((product, NS.Nom, Literal(name, datatype=XSD.string)))
             g.add((product, NS.Pes, Literal(weight, datatype=XSD.float)))
             g.add((product, NS.Preu, Literal(price, datatype=XSD.float)))
+            g.add((product, NS.Valoracio, Literal(price, datatype=XSD.float)))
 
             # Añadir el producto a un centro logístico
 
@@ -80,10 +82,9 @@ if __name__ == '__main__':
                 centro_logistico = centros_logisticos[num]
                 centro = URIRef(centro_logistico)
                 g.add((product, NS.ProductesCentreLogistic, centro))
-
     # Guardar el grafo en formato RDF/XML
     g.serialize(destination="productos.rdf", format="xml")
-
+    
     print("Se han generado instancias de productos aleatorios y se han guardado en 'productos.rdf'")
     # Serializar el grafo a formato RDF/XML
     rdf_xml_data = g.serialize(format='xml')
