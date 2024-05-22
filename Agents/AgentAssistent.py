@@ -1,25 +1,16 @@
-# -*- coding: utf-8 -*-
-"""
-Agente Asistente para el sistema ECSDI.
-Utiliza Flask para la interacción web y RDFlib para la manipulación de grafos RDF.
-"""
-
-from multiprocessing import Process, Queue
-import socket
 import flask
 from flask import Flask, request, render_template, redirect, url_for
 from rdflib import Namespace, Graph, RDF, Literal, URIRef
-from Utils.ACLMessages import build_message, get_message_properties
-from Utils.FlaskServer import shutdown_server
-from Utils.Agent import Agent
-from Utils.templates import *
-from Utils.OntoNamespaces import ONTO
+
 from Utils.ACL import ACL
+from Utils.ACLMessages import build_message, get_message_properties, send_message
+from Utils.Agent import Agent
 from Utils.Logger import config_logger
+from Utils.OntoNamespaces import ONTO
+import socket
+from multiprocessing import Queue, Process
 
 __author__ = 'Adria'
-
-from Utils.ACLMessages import send_message
 
 # Configuración de logging
 logger = config_logger(level=1)
@@ -37,9 +28,6 @@ app = Flask(__name__, template_folder='../Utils/templates')
 # Agentes del sistema
 AgentAssistent = Agent('AgentAssistent', agn.AgentAssistent, f'http://{hostname}:{port}/comm', f'http://{hostname}:{port}/Stop')
 ServeiBuscador = Agent('ServeiBuscador', agn.ServeiBuscador, f'http://{hostname}:9010/comm', f'http://{hostname}:9010/Stop')
-#ServeiComandes = Agent('ServeiComandes', agn.ServeiComandes, f'http://{hostname}:9012/comm', f'http://{hostname}:9012/Stop')
-#ServeiClients = Agent('ServeiClients', agn.ServeiClients, f'http://{hostname}:9013/comm', f'http://{hostname}:9013/Stop')
-#ServeiRetornador = Agent('ServeiRetornador', agn.ServeiRetornador, f'http://{hostname}:9014/comm', f'http://{hostname}:9014/Stop')
 
 cola1 = Queue()
 
@@ -140,43 +128,46 @@ def search_products():
                 return flask.redirect("http://%s:%d/hacer_pedido" % (hostname, port))
 
 
-def buscar_productos(Nom = None, PreuMin = 0.0, PreuMax = 10000.0, Marca = None, Valoracio=0.0):
+def buscar_productos(Nom=None, PreuMin=0.0, PreuMax=10000.0, Marca=None, Valoracio=0.0):
     global mss_cnt, products_list
     g = Graph()
 
-    action = FONTO['BuscarProductes' + str(mss_cnt)]
+    action = ONTO['BuscarProductes' + str(mss_cnt)]
     g.add((action, RDF.type, ONTO.BuscarProductes))
 
     if Nom:
-        nameRestriction = FONTO['RestriccioNom' + str(mss_cnt)]
+        nameRestriction = ONTO['RestriccioNom' + str(mss_cnt)]
         g.add((nameRestriction, RDF.type, ONTO.RestriccioNom))
-        g.add((nameRestriction, ONTO.Nombre, Literal(Nom)))
+        g.add((nameRestriction, ONTO.Nom, Literal(Nom)))
         g.add((action, ONTO.Restriccions, URIRef(nameRestriction)))
 
     if PreuMin:
-        minPriceRestriction = FONTO['RestriccioPreu' + str(mss_cnt)]
+        minPriceRestriction = ONTO['RestriccioPreu' + str(mss_cnt)]
         g.add((minPriceRestriction, RDF.type, ONTO.RestriccioPreu))
-        g.add((minPriceRestriction, ONTO.PrecioMinimo, Literal(PreuMin)))
+        g.add((minPriceRestriction, ONTO.PreuMin, Literal(PreuMin)))
         g.add((action, ONTO.Restriccions, URIRef(minPriceRestriction)))
 
     if PreuMax:
-        maxPriceRestriction = FONTO['RestriccioPreu' + str(mss_cnt)]
+        maxPriceRestriction = ONTO['RestriccioPreu' + str(mss_cnt)]
         g.add((maxPriceRestriction, RDF.type, ONTO.RestriccioPreu))
-        g.add((maxPriceRestriction, ONTO.PrecioMaximo, Literal(PreuMax)))
+        g.add((maxPriceRestriction, ONTO.PreuMax, Literal(PreuMax)))
         g.add((action, ONTO.Restriccions, URIRef(maxPriceRestriction)))
+
     if Marca:
-        brandRestriction = FONTO['RestriccioMarca' + str(mss_cnt)]
+        brandRestriction = ONTO['RestriccioMarca' + str(mss_cnt)]
         g.add((brandRestriction, RDF.type, ONTO.RestriccioMarca))
         g.add((brandRestriction, ONTO.Marca, Literal(Marca)))
         g.add((action, ONTO.Restriccions, URIRef(brandRestriction)))
+
     if Valoracio:
-        RatingRestriction = FONTO['RestriccioValoracio' + str(mss_cnt)]
-        g.add((RatingRestriction, RDF.type, ONTO.RestriccioValoracio))
-        g.add((RatingRestriction, ONTO.Valoracio, Literal(Valoracio)))
-        g.add((action, ONTO.Restriccions, URIRef(RatingRestriction)))
+        ratingRestriction = ONTO['RestriccioValoracio' + str(mss_cnt)]
+        g.add((ratingRestriction, RDF.type, ONTO.RestriccioValoracio))
+        g.add((ratingRestriction, ONTO.Valoracio, Literal(Valoracio)))
+        g.add((action, ONTO.Restriccions, URIRef(ratingRestriction)))
 
     msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiBuscador.uri, action, mss_cnt)
     mss_cnt += 1
+
     try:
         gproducts = send_message(msg, ServeiBuscador.address)
         products_list = []
@@ -203,9 +194,10 @@ def buscar_productos(Nom = None, PreuMin = 0.0, PreuMax = 10000.0, Marca = None,
                     product["Pes"] = o
                 if p == ONTO.Valoracio:
                     product["Valoracio"] = o
+        logger.info(f'Productos recibidos: {products_list}')
         return products_list
     except Exception as e:
-        print("Error en la comunicación con el servicio de búsqueda: ", e)
+        logger.error(f"Error en la comunicación con el servicio de búsqueda: {e}")
         return []
 
 
@@ -229,4 +221,4 @@ if __name__ == '__main__':
     # Esperamos a que acaben los behaviors
     ab1.join()
 
-    ('The End')
+    print('The End')
