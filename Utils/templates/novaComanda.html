@@ -64,10 +64,10 @@
             {% for p in products %}
             <tr>
                 <td><input type="checkbox" name="checkbox" value="{{ loop.index0 }}"></td>
-                <td>{{ p.name }}</td>
-                <td>{{ p.brand }}</td>
-                <td>{{ p.price }}€</td>
-                <td>{{ p.rating }}</td>
+                <td>{{ p.Nom }}</td>
+                <td>{{ p.Marca }}</td>
+                <td>{{ p.Preu }}€</td>
+                <td>{{ p.Valoracio }}</td>
             </tr>
             {% endfor %}
         </table>
@@ -85,8 +85,8 @@
         <tr><th>Producto</th><th>Precio</th></tr>
         {% for p in bill.Products %}
         <tr>
-            <td>{{ p.name }}</td>
-            <td>{{ p.price }}€</td>
+            <td>{{ p.Nom }}</td>
+            <td>{{ p.Preu }}€</td>
         </tr>
         {% endfor %}
         <tr><td>Total</td><td>{{ bill.total }}€</td></tr>

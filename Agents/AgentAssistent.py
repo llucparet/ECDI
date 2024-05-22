@@ -28,6 +28,7 @@ app = Flask(__name__, template_folder='../Utils/templates')
 # Agentes del sistema
 AgentAssistent = Agent('AgentAssistent', agn.AgentAssistent, f'http://{hostname}:{port}/comm', f'http://{hostname}:{port}/Stop')
 ServeiBuscador = Agent('ServeiBuscador', agn.ServeiBuscador, f'http://{hostname}:9010/comm', f'http://{hostname}:9010/Stop')
+ServeiComandes = Agent('ServeiComandes', agn.ServeiComandes, f'http://{hostname}:9012/comm', f'http://{hostname}:9012/Stop')
 
 cola1 = Queue()
 
@@ -38,6 +39,7 @@ products_list = []
 nombreusuario = ""
 completo = False
 info_bill = {}
+productos_valorar_no_permitido = []
 
 
 @app.route("/", methods=['GET', 'POST'])
@@ -91,16 +93,64 @@ def hacer_pedido():
             return redirect(url_for('search_products'))
 
 
-def realizar_compra(products_to_buy, city, priority, creditCard):
-    # Simulación de procesamiento de compra
-    factura = {
-        "ciudad": city,
-        "prioridad": priority,
-        "tarjeta_credito": creditCard,
-        "productos_comprados": [{k: p[k] for k in ['name', 'brand', 'price']} for p in products_to_buy],
-        "total": sum(p['price'] for p in products_to_buy)  # Suma total de los precios
-    }
-    return factura
+def realizar_compra(products_to_buy, city, priority, creditCard, DNI_usuario):
+    g = Graph()
+    action = ONTO['ComprarProductes_' + str(mss_cnt)]
+    g.add((action, RDF.type, ONTO.ComprarProductes))
+
+    cityonto = ONTO[city]
+    g.add((cityonto, ONTO.Ciutat, Literal(city)))
+    g.add((action, ONTO.Ciutat, URIRef(cityonto)))
+
+    priorityonto = ONTO[priority]
+    g.add((priorityonto, ONTO.Prioritat, Literal(priority)))
+    g.add((action, ONTO.Prioritat, URIRef(priorityonto)))
+
+    creditCardonto = ONTO[creditCard]
+    g.add((creditCardonto, ONTO.TargetaCredit, Literal(creditCard)))
+    g.add((action, ONTO.TargetaCredit, URIRef(creditCardonto)))
+
+    usuario = ONTO["Usuario"]
+    g.add((usuario, RDF.type, ONTO.Client))
+    g.add((usuario, ONTO.DNI, Literal(DNI_usuario)))
+    g.add((action, ONTO.DNI, URIRef(DNI_usuario)))
+
+    for p in products_to_buy:
+        producto = URIRef(p['url'])  # Asumiendo que 'url' es una URI válida para el producto
+        g.add((producto, RDF.type, ONTO.Producte))
+        for atr, value in p.items():
+            if atr == "id":
+                g.add((producto, ONTO.ID, Literal(value)))
+            elif atr == "name":
+                g.add((producto, ONTO.Nom, Literal(value)))
+            elif atr == "brand":
+                g.add((producto, ONTO.Marca, Literal(value)))
+            elif atr == "price":
+                g.add((producto, ONTO.Preu, Literal(value)))
+            elif atr == "weight":
+                g.add((producto, ONTO.Pes, Literal(value)))
+        g.add((action, ONTO.ProductesComanda, producto))
+
+    msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiComandes.uri, action, mss_cnt)
+    mss_cnt += 1
+    gfactura = send_message(msg, ServeiComandes.address)
+    info_bill = {}
+    products_name = []
+    for s, p, o in gfactura:
+        if p == ONTO.Ciutat:
+            info_bill['city'] = o
+        if p == ONTO.Prioritat:
+            info_bill['priority'] = o
+        if p == ONTO.TargetaCredit:
+            info_bill['creditCard'] = o
+        if p == ONTO.PreuTotal:
+            info_bill['price'] = o
+        if p == ONTO.Nom:
+            productos_valorar_no_permitido.append(str(o))
+            products_name.append(o)
+    info_bill['products'] = products_name
+
+    return info_bill
 
 
 @app.route("/search_products", methods=['GET', 'POST'])
