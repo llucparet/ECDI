@@ -1,38 +1,32 @@
-# -*- coding: iso-8859-1 -*-
-"""
-.. module:: RandomInfo
-
-RandomInfo
-*************
-
-:Description: RandomInfo
-
-    Genera un grafo RDF con aserciones generando los valores de los atributos aleatoriamente
-
-    Asumimos que tenemos ya definida una ontologia y simplemente escogemos una o varias de las clases
-    y generamos aleatoriamente los valores para sus atributos.
-
-    Solo tenemos que añadir aserciones al grafo RDFlib y despues grabarlo en OWL (o turtle), el resultado
-    deberia poder cargarse en Protege, en un grafo RDFlib o en una triplestore (Stardog, Fuseki, ...)
-
-    Se puede añadir tambien aserciones sobre las clases y los atributos si no estan ya en una ontologia
-      que hayamos elaborado con Protege
-
-:Authors: bejar
-
-
-:Version:
-
-:Created on: 22/04/2016 12:30
-
-"""
-
-from rdflib import Graph, RDF, RDFS, OWL, XSD, Namespace, Literal
-import string
 import random
+import string
 
-__author__ = 'bejar'
+import requests
+from rdflib import Graph, Literal, RDF, URIRef, Namespace
+from rdflib.namespace import XSD
 
+# Crear un grafo RDF
+g = Graph()
+
+# Definir la ontologÃ­a y sus namespaces
+NS = Namespace("http://www.semanticweb.org/nilde/ontologies/2024/4/")
+g.bind("ns", NS)
+
+# Definir categorÃ­as y marcas
+categories = ["Phone", "Blender", "Computer"]
+brands = ["Apple", "Samsung", "Xiaomi"]
+brands2 = ["Bosch", "Philips", "Taurus"]
+brands3 = ["Apple", "HP", "Lenovo"]
+
+centros_logisticos = ["http://www.semanticweb.org/ecsdi/ontologies/2024/4/Banyoles",
+                      "http://www.semanticweb.org/ecsdi/ontologies/2024/4/Barcelona",
+                      "http://www.semanticweb.org/ecsdi/ontologies/2024/4/Tarragona",
+                      "http://www.semanticweb.org/ecsdi/ontologies/2024/4/Valencia",
+                      "http://www.semanticweb.org/ecsdi/ontologies/2024/4/Zaragoza"]
+
+# FunciÃ³n para generar un ID Ãºnico
+def generate_id():
+    return f"P{random.randint(1000, 9999)}"
 
 def random_name(prefix, size=6, chars=string.ascii_uppercase + string.digits):
     """
@@ -44,131 +38,70 @@ def random_name(prefix, size=6, chars=string.ascii_uppercase + string.digits):
     :return:
     """
     return prefix + '_' + ''.join(random.choice(chars) for _ in range(size))
-
-
-def random_attribute(type, lim):
-    """
-    Genera un valor de atributo al azar dentro de un limite de valores para int y floar
-    :param type:
-    :return:
-    """
-    if len(lim) == 0 or lim[0] > lim[1]:
-        raise Exception('No Limit')
-    if type == 'f':
-        return random.uniform(lim[0], lim[1])
-    elif type == 'i':
-        return int(random.uniform(lim[0], lim[1]))
-
-
 if __name__ == '__main__':
-    # Declaramos espacios de nombres de nuestra ontologia, al estilo DBPedia (clases, propiedades, recursos)
-    PrOnt = Namespace("http://www.products.org/ontology/")
-    PrOntPr = Namespace("http://www.products.org/ontology/property/")
-    PrOntRes = Namespace("http://www.products.org/ontology/resource/")
+    # Crear instancias de productos aleatorios
+    for cat in categories:
+        for _ in range(20):
+            product_id = generate_id()
+            category = cat
+            valoracion = round(random.uniform(1, 5), 2)
+            if category == "Phone":
+                brand = random.choice(brands)
+                name = random_name(brand)
+                weight = round(random.uniform(200, 400), 2)
+                price = round(random.uniform(50, 600), 2)
+            elif category == "Blender":
+                brand = random.choice(brands2)
+                name = random_name(brand)
+                weight = round(random.uniform(25, 100), 2)
+                price = round(random.uniform(500, 1000), 2)
+            else:
+                brand = random.choice(brands3)
+                name = random_name(brand)
+                weight = round(random.uniform(450, 3000), 2)
+                price = round(random.uniform(1000, 2500), 2)
 
-    # lista de tipos XSD datatypes para los rangos de las propiedades
-    xsddatatypes = {'s': XSD.string, 'i': XSD.int, 'f': XSD.float}
 
-    # Creamos instancias de la clase PrOnt.ElectronicDevice asumiendo que esta clase ya existe en nuestra ontologia
-    # nos hace falta añadirla al fichero de instancias si queremos usarla para hacer consultas sobre sus subclases
-    #
-    # Asumimos que tenemos los atributos
-    #  * PrOntPr.tieneMarca: de producto a marca
-    #  * PrOntPr.precio: real
-    #  * PrOnt.peso: real
-    #  * PrOntPr.nombre: string
+            product = URIRef(NS[product_id])
 
-    # Diccionario de atributos f= tipo float, i= tipo int, s= tipo string, otro => clase existente en la ontologia
-    product_properties = {'tieneMarca': 'Marca',
-                          'precio': 'i',
-                          'peso': 'f',
-                          'nombre': 's'}
+            g.add((product, RDF.type, NS.Producte))
+            g.add((product, NS.ID, Literal(product_id, datatype=XSD.string)))
+            g.add((product, NS.Categoria, Literal(category, datatype=XSD.string)))
+            g.add((product, NS.Marca, Literal(brand, datatype=XSD.string)))
+            g.add((product, NS.Nom, Literal(name, datatype=XSD.string)))
+            g.add((product, NS.Pes, Literal(weight, datatype=XSD.float)))
+            g.add((product, NS.Preu, Literal(price, datatype=XSD.float)))
+            g.add((product, NS.Valoracio, Literal(price, datatype=XSD.float)))
 
-    # Diccionario con clases, cada clase tiene una lista con los atributos y en el caso de necesitarlo, su rango min/max
-    product_classes = {'Phone': [['tieneMarca'],
-                                 ['precio', 50, 600],
-                                 ['peso', 200, 400],
-                                 ['nombre']],
-                       'Blender': [['tieneMarca'],
-                                   ['precio', 25, 100],
-                                   ['peso', 500, 1000],
-                                   ['nombre']],
-                       'Computer': [['tieneMarca'],
-                                    ['precio', 450, 3000],
-                                    ['peso', 1000, 2500],
-                                    ['nombre']],
-                       }
+            # AÃ±adir el producto a un centro logÃ­stico
 
-    products_graph = Graph()
+            ncentres = int(random.uniform(1, 5))
+            numeros_disponibles = list(range(1, 5))
+            numeros_aleatorios = random.sample(numeros_disponibles, ncentres)
+            for num in numeros_aleatorios:
+                centro_logistico = centros_logisticos[num]
+                centro = URIRef(centro_logistico)
+                g.add((product, NS.ProductesCentreLogistic, centro))
+    # Guardar el grafo en formato RDF/XML
+    g.serialize(destination="productos.rdf", format="xml")
+    
+    print("Se han generado instancias de productos aleatorios y se han guardado en 'productos.rdf'")
+    # Serializar el grafo a formato RDF/XML
+    rdf_xml_data = g.serialize(format='xml')
 
-    # Añadimos los espacios de nombres al grafo
-    products_graph.bind('pont', PrOnt)
-    products_graph.bind('pontp', PrOntPr)
-    products_graph.bind('pontr', PrOntRes)
+    # URL del endpoint de Fuseki (cambia esto por la URL de tu instancia de Fuseki y el nombre de tu dataset)
+    fuseki_url = 'http://localhost:3030/ONTO/data'  # Cambia 'dataset' por el nombre de tu dataset
 
-    # Clase padre de los productos
-    products_graph.add((PrOnt.ElectronicDevice, RDF.type, OWL.Class))
+    # Cabeceras para la solicitud
+    headers = {
+        'Content-Type': 'application/rdf+xml'  # Cambiado a 'application/rdf+xml'
+    }
 
-    # Añadimos los atributos al grafo con sus rangos (los dominios los añadimos despues con cada clase)
-    for prop in product_properties:
-        if product_properties[prop] in ['s', 'i', 'f']:
-            products_graph.add((PrOntPr[prop], RDF.type, OWL.DatatypeProperty))
-            products_graph.add(
-                (PrOntPr[prop], RDFS.range, xsddatatypes[product_properties[prop]]))
-        else:
-            products_graph.add((PrOntPr[prop], RDF.type, OWL.ObjectProperty))
-            products_graph.add(
-                (PrOntPr[prop], RDFS.range, PrOnt[product_properties[prop]]))
+    # Enviamos los datos a Fuseki
+    response = requests.post(fuseki_url, data=rdf_xml_data, headers=headers)
 
-    # Clase de las marcas
-    # Si tenemos ya generadas instancias para los rangos de relaciones
-    # podemos consultarlas de un grafo RDF para usarlas como valores
-    # En este ejemplo como solo hay una relacion generamos las instancias a mano y al azar
-    products_graph.add((PrOnt.Marca, RDF.type, OWL.Class))
-
-    for prc in product_classes:
-        products_graph.add(
-            (PrOnt[prc], RDFS.subClassOf, PrOnt.ElectronicDevice))
-
-        # Añadimos las propiedades con sus dominios (si no estan ya en la definicion de la ontologia original)
-
-        for prop in product_classes[prc]:
-            products_graph.add((PrOntPr[prop[0]], RDFS.domain, PrOnt[prc]))
-
-        # Generamos instancias de marcas al azar (nada impide que las marcas puedan ser comunes
-        # entre productos (en este ejemplo no lo son)
-        dclases = {'Marca': []}
-        for i in range(10):
-            # instancia al azar
-            rmarca = random_name('Marca_' + prc)
-            dclases['Marca'].append(rmarca)
-            # Añadimos la instancia de marca
-            products_graph.add((PrOntRes[rmarca], RDF.type, PrOnt.Marca))
-            # Le asignamos una propiedad nombre a la marca
-            products_graph.add(
-                (PrOntRes[rmarca], PrOntPr.nombre, Literal(rmarca)))
-
-        # generamos instancias de productos
-        for i in range(20):
-            # instancia al azar
-            rproduct = random_name(prc)
-            products_graph.add((PrOntRes[rproduct], RDF.type, PrOnt[prc]))
-
-            # Generamos sus atributos
-            for attr in product_classes[prc]:
-                prop = product_properties[attr[0]]
-                # el atributo es real o entero
-                if prop == 'f' or prop == 'i':
-                    val = Literal(random_attribute(prop, attr[1:]))
-                # el atributo es string
-                elif prop == 's':
-                    val = Literal(random_name(attr[0]))
-                else:
-                    val = PrOntRes[random.choice(dclases[prop])]
-                products_graph.add((PrOntRes[rproduct], PrOntPr[attr[0]], val))
-
-    # Grabamos la ontologia resultante en turtle
-    # Lo podemos cargar en Protege para verlo y cargarlo con RDFlib o en una triplestore (Fuseki)
-    ofile = open('product.ttl', "wb")
-    ofile.write(products_graph.serialize(format='turtle'))
-    ofile.close()
+    # Verificamos la respuesta
+    if response.status_code == 200:
+        print('Datos subidos exitosamente a Fuseki')
+    else:
+        print(f'Error al subir los datos a Fuseki: {response.status_code} - {response.text}')
