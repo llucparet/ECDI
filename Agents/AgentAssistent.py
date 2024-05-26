@@ -1,4 +1,8 @@
+import random
+
 import flask
+import requests
+from SPARQLWrapper import SPARQLWrapper, JSON
 from flask import Flask, request, render_template, redirect, url_for
 from rdflib import Namespace, Graph, RDF, Literal, URIRef
 
@@ -10,13 +14,13 @@ from Utils.OntoNamespaces import ONTO
 import socket
 from multiprocessing import Queue, Process
 
-__author__ = 'Adria'
+__author__ = 'Adria_Lluc_Nil'
 
 # Configuración de logging
 logger = config_logger(level=1)
 
 # Configuración del agente
-hostname = socket.gethostname()
+hostname = "localhost"
 port = 9011
 
 # Namespaces para RDF
@@ -28,7 +32,7 @@ app = Flask(__name__, template_folder='../Utils/templates')
 # Agentes del sistema
 AgentAssistent = Agent('AgentAssistent', agn.AgentAssistent, f'http://{hostname}:{port}/comm', f'http://{hostname}:{port}/Stop')
 ServeiBuscador = Agent('ServeiBuscador', agn.ServeiBuscador, f'http://{hostname}:9010/comm', f'http://{hostname}:9010/Stop')
-ServeiComandes = Agent('ServeiComandes', agn.ServeiComandes, f'http://{hostname}:9012/comm', f'http://{hostname}:9012/Stop')
+ServeiComandes = Agent('ServeiComandes', agn.ServeiComandes, f'http://{hostname}:8012/comm', f'http://{hostname}:9012/Stop')
 
 cola1 = Queue()
 
@@ -36,7 +40,8 @@ cola1 = Queue()
 mss_cnt = 0
 productos_recomendados = []
 products_list = []
-nombreusuario = ""
+DNIusuari = ""
+usuari= ""
 completo = False
 info_bill = {}
 productos_valorar_no_permitido = []
@@ -44,19 +49,36 @@ productos_valorar_no_permitido = []
 
 @app.route("/", methods=['GET', 'POST'])
 def initialize():
-    global nombreusuario, productos_recomendados, products_list, completo, info_bill
+    global DNIusuari, productos_recomendados, products_list, completo, info_bill
     if request.method == 'GET':
-        if nombreusuario:
+        if DNIusuari:
             if not productos_recomendados:
-                return render_template('home.html', products=None, usuario=nombreusuario, recomendacion=False)
+                return render_template('home.html', products=None, usuario=DNIusuari, recomendacion=False)
             else:
-                return render_template('home.html', products=productos_recomendados, usuario=nombreusuario, recomendacion=True)
+                return render_template('home.html', products=productos_recomendados, usuario=DNIusuari, recomendacion=True)
         else:
             return render_template('usuari.html')
     elif request.method == 'POST':
         if 'submit' in request.form and request.form['submit'] == 'registro_usuario':
-            nombreusuario = request.form['name']
-            return render_template('home.html', products=None, usuario=nombreusuario)
+            DNIusuari = request.form['DNI']
+
+            g = Graph()
+            g.bind('ns', ONTO)
+            client = URIRef(ONTO[DNIusuari])
+            g.add((client, RDF.type, ONTO.Client))
+            g.add((client, ONTO.DNI, Literal(DNIusuari)))
+            rdf_xml_data = g.serialize(format='xml')
+            fuseki_url = 'http://localhost:3030/ONTO/data'  # Cambia 'dataset' por el nombre de tu dataset
+
+            # Cabeceras para la solicitud
+            headers = {
+                'Content-Type': 'application/rdf+xml'  # Cambiado a 'application/rdf+xml'
+            }
+
+            # Enviamos los datos a Fuseki
+            response = requests.post(fuseki_url, data=rdf_xml_data, headers=headers)
+            print (response)
+            return render_template('home.html', products=None, usuario=DNIusuari)
         elif 'submit' in request.form and request.form['submit'] == 'search_products':
             return flask.redirect("http://%s:%d/search_products" % (hostname, port))
 
@@ -86,78 +108,74 @@ def hacer_pedido():
                                        completo=False, campos_error=True)
 
             # Procesa la compra y genera una "factura"
-            bill = realizar_compra(products_to_buy, city, priority, creditCard)
+            comanda = realizar_compra(products_to_buy, city, priority, creditCard)
             completo = True  # Indica que la compra se ha completado
-            return render_template('novaComanda.html', products=None, bill=bill, intento=False, completo=completo)
+            return render_template('novaComanda.html', products=None, comanda=comanda, intento=False, completo=completo)
         elif request.form['submit'] == "Volver a buscar":
             return redirect(url_for('search_products'))
 
 
-def realizar_compra(products_to_buy, city, priority, creditCard, DNI_usuario):
+def realizar_compra(products_to_buy, city, priority, creditCard):
+    global mss_cnt
     g = Graph()
     action = ONTO['ComprarProductes_' + str(mss_cnt)]
     g.add((action, RDF.type, ONTO.ComprarProductes))
-
-    cityonto = ONTO[city]
-    g.add((cityonto, ONTO.Ciutat, Literal(city)))
-    g.add((action, ONTO.Ciutat, URIRef(cityonto)))
-
-    priorityonto = ONTO[priority]
-    g.add((priorityonto, ONTO.Prioritat, Literal(priority)))
-    g.add((action, ONTO.Prioritat, URIRef(priorityonto)))
-
-    creditCardonto = ONTO[creditCard]
-    g.add((creditCardonto, ONTO.TargetaCredit, Literal(creditCard)))
-    g.add((action, ONTO.TargetaCredit, URIRef(creditCardonto)))
-
-    usuario = ONTO["Usuario"]
-    g.add((usuario, RDF.type, ONTO.Client))
-    g.add((usuario, ONTO.DNI, Literal(DNI_usuario)))
-    g.add((action, ONTO.DNI, URIRef(DNI_usuario)))
+    g.add((action, ONTO.Ciutat, Literal(city)))
+    g.add((action, ONTO.Prioritat, Literal(priority)))
+    g.add((action, ONTO.TargetaCredit, Literal(creditCard)))
+    g.add((action, ONTO.DNI, Literal(DNIusuari)))
 
     for p in products_to_buy:
-        producto = URIRef(p['url'])  # Asumiendo que 'url' es una URI válida para el producto
-        g.add((producto, RDF.type, ONTO.Producte))
-        for atr, value in p.items():
-            if atr == "id":
-                g.add((producto, ONTO.ID, Literal(value)))
-            elif atr == "name":
-                g.add((producto, ONTO.Nom, Literal(value)))
-            elif atr == "brand":
-                g.add((producto, ONTO.Marca, Literal(value)))
-            elif atr == "price":
-                g.add((producto, ONTO.Preu, Literal(value)))
-            elif atr == "weight":
-                g.add((producto, ONTO.Pes, Literal(value)))
-        g.add((action, ONTO.ProductesComanda, producto))
-
+        producte = URIRef(p['Producte'])  # Asumiendo que 'url' es una URI válida para el producto
+        g.add((producte, ONTO.Nom, Literal(p['Nom'])))
+        g.add((action, ONTO.Compra, producte))
+    # Send the GET request with a timeout
     msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiComandes.uri, action, mss_cnt)
     mss_cnt += 1
-    gfactura = send_message(msg, ServeiComandes.address)
-    info_bill = {}
-    products_name = []
-    for s, p, o in gfactura:
+    resposta = send_message(msg, ServeiComandes.address)
+    comanda_info = {}
+    products = []
+    for s, p, o in resposta:
         if p == ONTO.Ciutat:
-            info_bill['city'] = o
+            comanda_info['city'] = o
         if p == ONTO.Prioritat:
-            info_bill['priority'] = o
+            comanda_info['priority'] = o
         if p == ONTO.TargetaCredit:
-            info_bill['creditCard'] = o
+            comanda_info['creditCard'] = o
+        if p == ONTO.Data:
+            comanda_info['date'] = o
         if p == ONTO.PreuTotal:
-            info_bill['price'] = o
-        if p == ONTO.Nom:
-            productos_valorar_no_permitido.append(str(o))
-            products_name.append(o)
-    info_bill['products'] = products_name
-
-    return info_bill
+            comanda_info['total'] = o
+        if p == ONTO.ProductesComanda:
+            #productos_valorar_no_permitido.append(str(o))
+            values = "".join(f"<{o}> ")
+            endpoint_url = "http://localhost:3030/ONTO/query"
+            sparql_query = f"""
+                               PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+                               PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
+                               SELECT ?nom ?preu
+                               WHERE {{
+                                    ?producte rdf:type ont:Producte .
+                                     ?producte ont:Nom ?nom .
+                                        ?producte ont:Preu ?preu .
+                                     VALUES ?producte {{{values}}}
+                               }}
+                              """
+            sparql = SPARQLWrapper(endpoint_url)
+            sparql.setQuery(sparql_query)
+            sparql.setReturnFormat(JSON)
+            results = sparql.query().convert()
+            product = {"Nom": results['results']['bindings'][0]['nom']['value'],"Preu": results['results']['bindings'][0]['preu']['value']}
+            products.append(product)
+    comanda_info['Products'] = products
+    return comanda_info
 
 
 @app.route("/search_products", methods=['GET', 'POST'])
 def search_products():
-    global nombreusuario
+    global DNIusuari
     if request.method == 'GET':
-        return render_template('busquedaProductes.html', products=None, usuario=nombreusuario, busquedafallida=False,errorvaloracio=False)
+        return render_template('busquedaProductes.html', products=None, usuario=DNIusuari, busquedafallida=False, errorvaloracio=False)
     else:
         if request.form['submit'] == 'Buscar':
             global products_list
@@ -168,10 +186,10 @@ def search_products():
             Valoracio = request.form['Valoracio']
             products_list = buscar_productos(Nom, PreuMin, PreuMax, Marca, Valoracio)
             if len(products_list) == 0:
-                return render_template('busquedaProductes.html', products=None, usuario=nombreusuario, busquedafallida=True,errorvaloracio=False)
+                return render_template('busquedaProductes.html', products=None, usuario=DNIusuari, busquedafallida=True, errorvaloracio=False)
             elif Valoracio != "":
                 if str(Valoracio) < str(0) or str(Valoracio) > str(5):
-                    return render_template('busquedaProductes.html', products=None, usuario=nombreusuario, busquedafallida=False, errorvaloracio=True)
+                    return render_template('busquedaProductes.html', products=None, usuario=DNIusuari, busquedafallida=False, errorvaloracio=True)
                 else:
                     return flask.redirect("http://%s:%d/hacer_pedido" % (hostname, port))
             else:
@@ -261,6 +279,7 @@ def agentbehavior1(queue):
 
 
 if __name__ == '__main__':
+    """
     # Ponemos en marcha los behaviors
     ab1 = Process(target=agentbehavior1, args=(cola1,))
     ab1.start()
@@ -272,3 +291,5 @@ if __name__ == '__main__':
     ab1.join()
 
     print('The End')
+    """
+    app.run(host=hostname, port=port)

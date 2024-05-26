@@ -42,11 +42,10 @@ def communication():
         try:
             results = sparql.query().convert()
             centre_logistic = None
-            """
             for result in results["results"]["bindings"]:
                 centre_logistic = result["ciudad"]["value"]
             return centre_logistic, 200
-            """
+
             return results, 200
         except Exception as e:
             print(f"Error al ejecutar la consulta: {e}")

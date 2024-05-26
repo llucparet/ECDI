@@ -17,7 +17,7 @@ import sys
 logger = config_logger(level=1)
 
 # Configuración del agente
-hostname = socket.gethostname()
+hostname = "localhost"
 port = 9010
 
 # Namespaces para RDF
