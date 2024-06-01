@@ -95,7 +95,7 @@ zaragoza = [
     ["Transportista_UPS", "UPS", 1.95, 0.012, 0.18]
 ]
 
-llista_tansportistas = {
+llista_transportistas = {
     "Banyoles": banyoles,
     "Barcelona": barcelona,
     "Tarragona": tarragona,
@@ -208,7 +208,7 @@ def communication():
                         priority = int(o)
 
 
-                transportistes = llista_tansportistas[ciutat]
+                transportistes = llista_transportistas[ciutat]
 
                 action = ONTO["EnviarCondicionsEnviament_" + str(get_count())]
                 gr.add((accion, RDF.type, ONTO.EnviarCondicionsEnviament))
@@ -217,44 +217,53 @@ def communication():
                     oferta = ONTO["Oferta_" + str(get_count())]
                     gr.add((action, ONTO.Oferta, oferta))
                     gr.add((oferta, RDF.type, ONTO.Oferta))
-                    gr.add((oferta, ONTO.Transportista, ONTO[t[0]]))
+                    transportista = ONTO[t[0]]
+                    gr.add((oferta, ONTO.Transportista, transportista))
+                    gr.add((transportista, ONTO.Nom, Literal(t[1])))
                     distancia = calcular_distancia(city)
-                    preu_transport = t[2] * (peso_total/1000) + distancia * t[3]
+                    preu_transport = (t[2] * (peso_total/1000) + distancia * t[3]) * random.uniform(0.8,1.2)
                     gr.add((oferta, ONTO.Preu, Literal(preu_transport)))
                     data = calcular_data(priority)
                     gr.add((oferta, ONTO.Data, Literal(data)))
 
                 return gr.serialize(format="xml"), 200
-            """
-            elif accion == ONTO.PedirContraofertasPreciosEnvio:
-                gFinal = gFirstOffers
-                action = ONTO["PedirContraofertasPreciosEnvio_" + str(get_count())]
-                gFinal.add((action, RDF.type, ONTO.PedirContraofertasPreciosEnvio))
 
+            elif accion == ONTO.EnviarContraoferta:
+                print("Entra en enviar contraoferta")
+                action = ONTO["EnviarContraoferta_" + str(get_count())]
+                gr.add((action, RDF.type, ONTO.EnviarContraoferta))
+
+                preu_contraoferta = 0
+                transportista = ""
+                preu_ultim = 0
                 for s, p, o in gm:
-                    if p == ONTO.PrecioTransporte:
-                        contraoferta = o
+                    if p == ONTO.Preu:
+                        preu_contraoferta = float(o)
+                    elif p == ONTO.Transportista:
+                        transportista = str(gm.value(subject=o, predicate=ONTO.Nom))
+                    elif p == ONTO.UltimPreu:
+                        preu_ultim = float(o)
+                trobat = False
+                print(preu_contraoferta)
+                print(preu_ultim)
+                for t in llista_transportistas[ciutat]:
+                    if t[1] == transportista:
+                        trobat = True
+                        marge = t[4]
+                        print(marge)
+                        if preu_contraoferta <= preu_ultim * (1-marge):
+                            nou_marge = marge * random.uniform(0.8, 1.2)
+                            print("nou marge: " + str(nou_marge))
+                            nou_preu = preu_ultim * (1 - (nou_marge))
+                            gr.add((action, ONTO.RebutjarOferta, Literal(True)))
+                            gr.add((action, ONTO.Preu, Literal(nou_preu)))
 
-                logger.info("Hemos recibido una contraoferta del centro logístico")
-
-                transportistas = []
-                for s, p, o in gFinal:
-                    if p == ONTO.OfertaDe:
-                        transportistas.append(o)
-                for t in transportistas:
-                    offer = gFinal.value(subject=t, predicate=ONTO.PrecioTransporte)
-                    if contraoferta.toPython() < 0.75 * offer.toPython():
-                        logger.info("El transportista " + t[63:] + " rechaza la contraoferta")
-                        gFinal.remove((t, None, None))
-                        gFinal.remove((None, None, t))
-                    else:
-                        segunda_oferta = offer.toPython() * random.uniform(0.80, 0.97)
-                        logger.info("El transportista " + t[
-                                                          63:] + " acepta la contraoferta y ofrece un segundo precio de envío de " + str(
-                            segunda_oferta) + "€")
-                        gFinal.set((t, ONTO.PrecioTransporte, Literal(segunda_oferta)))
-                return gFinal.serialize(format="xml"), 200
-            
+                        else:
+                            gr.add((action, ONTO.AcceptarContraoferta, Literal(True)))
+                            gr.add((action, ONTO.Preu, Literal(preu_contraoferta)))
+                print(trobat)
+                return gr.serialize(format="xml"), 200
+            """
             elif accion == ONTO.EnviarPaquete:
                 for s, p, o in gm:
                     if p == ONTO.LoteFinal:
@@ -289,6 +298,8 @@ def entregar_producto():
     grr = Graph()
     return grr.serialize(format="xml"), 200
 """
+
+
 
 @app.route("/Stop")
 def stop():

@@ -150,15 +150,50 @@ def communication():
 
                 preu_mes_barat = sys.maxsize
                 data = "9999-12-31"
-                trasnportistax = ""
+                nom_transportista = ""
                 for s, p, o in resposta:
                     if p == ONTO.Oferta:
                         preu = float(resposta.value(subject=o, predicate=ONTO.Preu))
                         if preu < preu_mes_barat:
                             preu_mes_barat = preu
                             data = resposta.value(subject=o, predicate=ONTO.Data)
-                            transportistax = resposta.value(subject=o, predicate=ONTO.Transportista)
+                            transportista = resposta.value(subject=o, predicate=ONTO.Transportista)
+                            nom_transportista = resposta.value(subject=transportista, predicate=ONTO.Nom)
+                #iniciar negociacio contraoferta
+                acceptada = False
+                reduccio = 0.80
 
+                while not acceptada:
+                    print("preu_mes_barat: ", preu_mes_barat)
+                    print(ciutat)
+                    count = get_count()
+                    gr = Graph()
+                    contraoferta_action = ONTO["EnviarContraoferta_" + str(count)]
+                    gr.add((contraoferta_action, RDF.type, ONTO.EnviarContraoferta))
+                    gr.add((contraoferta_action, ONTO.Preu,
+                            Literal(preu_mes_barat * reduccio)))
+                    gr.add((contraoferta_action, ONTO.UltimPreu, Literal(preu_mes_barat)))
+                    gr.add((contraoferta_action, ONTO.Transportista, transportista))
+                    gr.add((transportista, ONTO.Nom, Literal(nom_transportista, datatype=XSD.string)))
+                    AgentTransportista = asignar_port_agenttrasportista(port + 5)
+                    msg = build_message(gr, ACL.request, ServeiCentreLogistic.uri,
+                                        AgentTransportista.uri, contraoferta_action, count)
+
+                    resposta_contraoferta = send_message(msg, AgentTransportista.address)
+
+                    for s, p, o in resposta_contraoferta:
+                        print(p)
+                        if p == ONTO.AcceptarContraoferta:
+                            preu_mes_barat = float(resposta_contraoferta.value(subject=s, predicate=ONTO.Preu))
+                            acceptada = True
+                        elif p == ONTO.RebutjarOferta:
+                            reduccio += 0.05
+                            nou_preu = float(resposta_contraoferta.value(subject=s, predicate=ONTO.Preu))
+                            print("nou_preu: ", nou_preu)
+                            if nou_preu < preu_mes_barat*reduccio:
+                                acceptada = True
+                                preu_mes_barat = nou_preu
+                print("hola2")
                 gr = Graph()
                 accion = ONTO["AssignarTransportista_" + str(count)]
                 gr.add((accion, RDF.type, ONTO.AssignarTransportista))
@@ -166,56 +201,6 @@ def communication():
                 gr.add((accion, ONTO.Preu, Literal(preu_mes_barat)))
 
                 """ 
-                               for s, p, o in resposta:
-                    if p == ONTO.Preu:
-                        lots_centre_logistic.append(o)
-                        
-                gc = Graph()
-                accion = ONTO["EnviarContraoferta_" + str(count)]
-                gc.add((accion, RDF.type, ONTO.EnviarContraoferta))
-                gc.add((lot, RDF.type, ONTO.Lot))
-                gc.add((accion, ONTO.EnviaContraoferta, lot))
-
-                transportista = []
-                for s, p, o in gr:
-                    if p == ONTO.OfertaDe:
-                        transportista.append(o)
-                precio_min = sys.maxsize
-                for t in transportista:
-                    preu = gr.value(subject=t, predicate=ONTO.Preu)
-                    if preu_min > preu:
-                        preu_min = preu
-                preu_contraoferta = preu_min * 0.9
-                gc.add((accion, ONTO.PreuContraoferta, Literal(preu_contraoferta, datatype=XSD.float)))
-
-                logger.info("Enviamos la contraoferta a los transportistas")
-                gf = send_message(
-                    build_message(gc, ACL.request, ServeiCentreLogistic.uri,
-                                  AgentTransportista.uri, accion, count),
-                    AgentTransportista.address
-                )
-                logger.info("Hemos recibido la confirmación de la contraoferta")
-
-                preu_final_enviament = sys.maxsize
-                id_transportista_final = ""
-                nom_transportista_final = ""
-                data_final = "9999-12-31"
-                tansportista = []
-                for s, p, o in gf:
-                    if p == ONTO.OfertaDe:
-                        transportista.append(o)
-                for t in transportista:
-                    preu = gf.value(subject=t, predicate=ONTO.Preu)
-                    data = gf.value(subject=t, predicate=ONTO.Data)
-                    if preu < preu_final_enviament or (preu == preu_final_enviament and data < data_final):
-                        preu_final_enviament = preu
-                        id_transportista_final = gf.value(subject=t, predicate=ONTO.ID)
-                        nom_transportista_final = gf.value(subject=t, predicate=ONTO.Nom)
-                        data_final = data
-
-                preu_compra += preu_final_enviament
-                transportista = ONTO[id_transportista_final]
-
                 gconfirm = Graph()
                 accion = ONTO["AssignarTransportista_" + str(count)]
                 gconfirm.add((accion, RDF.type, ONTO.AssignarTransportista))
@@ -246,6 +231,8 @@ def communication():
                 logger.info("Hemos cobrado los productos")
                 """
                 return gr.serialize(format='xml'), 200
+
+
 if __name__ == '__main__':
     ports_cities = {
         8014: 'Banyoles',
