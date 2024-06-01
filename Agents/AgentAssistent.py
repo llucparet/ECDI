@@ -271,6 +271,8 @@ def buscar_productos(Nom=None, PreuMin=0.0, PreuMax=10000.0, Marca=None, Valorac
                     product["Pes"] = o
                 if p == ONTO.Valoracio:
                     product["Valoracio"] = o
+                if p == ONTO.Categoria:
+                    product["Categoria"] = o
         logger.info(f'Productos recibidos: {products_list}')
         return products_list
     except Exception as e:

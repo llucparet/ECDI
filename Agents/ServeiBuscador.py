@@ -105,6 +105,11 @@ def communication():
                         valoracio = gm.value(subject=restriccio, predicate=ONTO.Valoracio)
                         logger.info('BÚSQUEDA->Restriccion de Valoración: ' + str(valoracio))
                         restriccions_dict['valoracio'] = float(valoracio)
+
+                    elif gm.value(subject=restriccio, predicate=RDF.type) == ONTO.RestriccioCategoria:
+                        categoria = gm.value(subject=restriccio, predicate=ONTO.Categoria)
+                        logger.info('BÚSQUEDA->Restriccion de Categoria: ' + str(categoria))
+                        restriccions_dict['categoria'] = str(categoria)
                         """""
                     elif gm.value(subject=restriccio, predicate=RDF.type) == ONTO.RestriccioCategoria:
                         categoria = gm.value(subject=restriccio, predicate=ONTO.Categoria)
@@ -155,15 +160,15 @@ def buscar_productos(valoracio=0.0, marca=None, preciomin=0.0, preciomax=sys.flo
         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         PREFIX ex: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
 
-        SELECT ?producte ?categoria ?nom ?pes ?preu ?marca ?valoracio
+        SELECT ?producte ?nom ?pes ?preu ?marca ?valoracio ?categoria
         WHERE {{
             ?producte rdf:type ex:Producte .
-            OPTIONAL {{ ?producte ex:Categoria ?categoria . }}
             OPTIONAL {{ ?producte ex:Nom ?nom . }}
             OPTIONAL {{ ?producte ex:Pes ?pes . }}
             OPTIONAL {{ ?producte ex:Preu ?preu . }}
             OPTIONAL {{ ?producte ex:Marca ?marca . }}
             OPTIONAL {{ ?producte ex:Valoracio ?valoracio . }}
+            OPTIONAL {{ ?producte ex:Categoria ?categoria . }}
             FILTER (?preu >= {float(preciomin)} && ?preu <= {float(preciomax)})
     """
     if marca:
@@ -173,7 +178,7 @@ def buscar_productos(valoracio=0.0, marca=None, preciomin=0.0, preciomax=sys.flo
     if valoracio > 0.0:
         query += f"    FILTER (?valoracio >= {float(valoracio)})\n"
     if categoria:
-        query += f"    FILTER (?categoria = \"{categoria}\")\n"
+        query += f"    FILTER (regex(?categoria, \"{categoria}\", \"i\"))\n"
 
     query += "}"
 
