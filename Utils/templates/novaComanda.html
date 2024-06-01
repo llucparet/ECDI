@@ -60,6 +60,7 @@
                 <th>Marca</th>
                 <th>Precio</th>
                 <th>Valoración</th>
+                <th>Categoría</th>
             </tr>
             {% for p in products %}
             <tr>
@@ -68,6 +69,7 @@
                 <td>{{ p.Marca }}</td>
                 <td>{{ p.Preu }}€</td>
                 <td>{{ p.Valoracio }}</td>
+                <td>{{ p.Categoria }}</td>
             </tr>
             {% endfor %}
         </table>
