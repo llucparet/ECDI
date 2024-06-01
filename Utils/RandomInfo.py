@@ -71,7 +71,7 @@ if __name__ == '__main__':
             g.add((product, NS.Nom, Literal(name, datatype=XSD.string)))
             g.add((product, NS.Pes, Literal(weight, datatype=XSD.float)))
             g.add((product, NS.Preu, Literal(price, datatype=XSD.float)))
-            g.add((product, NS.Valoracio, Literal(price, datatype=XSD.float)))
+            g.add((product, NS.Valoracio, Literal(valoracion, datatype=XSD.float)))
 
             # Añadir el producto a un centro logístico
 
