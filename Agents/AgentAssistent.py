@@ -14,7 +14,6 @@ from Utils.OntoNamespaces import ONTO
 import socket
 from multiprocessing import Queue, Process
 
-__author__ = 'Adria_Lluc_Nil'
 
 # Configuración de logging
 logger = config_logger(level=1)
@@ -126,8 +125,11 @@ def realizar_compra(products_to_buy, city, priority, creditCard):
     g.add((action, ONTO.DNI, Literal(DNIusuari)))
 
     for p in products_to_buy:
-        producte = URIRef(p['Producte'])  # Asumiendo que 'url' es una URI válida para el producto
+        producte = URIRef(p['Producte'])
+        g.add((producte, RDF.type, ONTO.Producte))# Asumiendo que 'url' es una URI válida para el producto
         g.add((producte, ONTO.Nom, Literal(p['Nom'])))
+        g.add((producte, ONTO.Preu, Literal(p['Preu'])))
+        g.add((producte, ONTO.Pes, Literal(p['Pes'])))
         g.add((action, ONTO.Compra, producte))
     # Send the GET request with a timeout
     msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiComandes.uri, action, mss_cnt)

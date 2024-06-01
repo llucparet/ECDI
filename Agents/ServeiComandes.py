@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
 Agente Gestor de Compra.
+Tiene una funcion AgentBehavior1 que se lanza como un thread concurrente
 
 Esqueleto de agente usando los servicios web de Flask
 
 /comm es la entrada para la recepcion de mensajes del agente
 /Stop es la entrada que para el agente
 
-Tiene una funcion AgentBehavior1 que se lanza como un thread concurrente
 @author: pau-laia-anna
 """
 
@@ -26,7 +26,6 @@ from Utils.ACL import ACL
 from geopy.geocoders import Nominatim
 from geopy.distance import great_circle, geodesic
 
-__author__ = 'pau-laia-anna'
 
 from Utils.ACLMessages import build_message, send_message, get_message_properties
 
@@ -121,31 +120,6 @@ def centro_logistico_mas_cercano(ciudades_centros, ciudad_destino):
 
     return centro_mas_cercano
 
-
-def centro_logistico_mas_alejado(ciudades_centros, ciudad_destino):
-    """
-    Encuentra el centro logístico más alejado de la ciudad de destino.
-    """
-    coordenadas_destino = obtener_coordenadas(ciudad_destino)
-
-    if not coordenadas_destino:
-        print(f"No se pudieron obtener las coordenadas de la ciudad destino: {ciudad_destino}")
-        return None
-
-    distancia_maxima = float('-inf')
-    centro_mas_alejado = None
-
-    for ciudad_centro in ciudades_centros:
-        coordenadas_centro = obtener_coordenadas(ciudad_centro)
-        if coordenadas_centro:
-            distancia = geodesic(coordenadas_destino, coordenadas_centro).kilometers
-            if distancia > distancia_maxima:
-                distancia_maxima = distancia
-                centro_mas_alejado = ciudad_centro
-
-    return centro_mas_alejado
-
-
 @app.route("/comm")
 def communication():
     """
@@ -176,10 +150,9 @@ def communication():
                                msgcnt=get_count())
 
         else:
-            # Extraemos el objeto del contenido que ha de ser una accion de la ontologia
-            # de registro
+
             content = msgdic['content']
-            # Averiguamos el tipo de la accion
+
             accion = gm.value(subject=content, predicate=RDF.type)
             llista_productes = []
             print(accion)
@@ -187,7 +160,7 @@ def communication():
             if accion == ONTO.ComprarProductes:
                 preu_total = 0
                 actionresposta = ONTO['EnviarRespostaTemptativa' + str(get_count())]
-                gr.add((actionresposta, RDF.type, ONTO.EmviarRespostaTemptativa))
+                gr.add((actionresposta, RDF.type, ONTO.EnviarRespostaTemptativa))
                 comanda = ONTO['Comanda' + str(get_count())]
                 gr.add((comanda, RDF.type, ONTO.Comanda))
                 gr.add((actionresposta, ONTO.ComandaRespostaTemptativa, comanda))
@@ -195,6 +168,7 @@ def communication():
                 priority = 0
                 creditcard = ""
                 dni = ""
+                i = 0
                 for s, p, o in gm:
                     if p == ONTO.Prioritat:
                         gr.add((comanda, ONTO.Prioritat, Literal(o)))
@@ -210,34 +184,19 @@ def communication():
                         gr.add((comanda, ONTO.DNI, Literal(o)))
                         dni = o
                     if p == ONTO.Compra:
-                        print(o)
                         llista_productes.append(o)
                         gr.add((comanda, ONTO.ProductesComanda, o))
+                        preu = float(gm.value(o, ONTO.Preu))
+                        preu_total += preu
 
-                ab1 = Process(target=agentbehavior1, args=(cola1, llista_productes, ciutat, priority, creditcard,dni))
+                ab1 = Process(target=agentbehavior1, args=(cola1, llista_productes, ciutat, priority, creditcard,dni,gm))
                 ab1.start()
-                values = "".join(f"<{producte}> " for producte in llista_productes)
-                sparql_query = f"""
-                    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-                    PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
-                    SELECT (SUM(?preu) AS ?totalPreu) WHERE {{
-                    ?producte rdf:type ont:Producte .
-                    ?producte ont:Preu ?preu .
-                    VALUES ?producte {{{values}}}
-                   }}
-                """
-                # Crear el objeto SPARQLWrapper y establecer la consulta
-                sparql = SPARQLWrapper(endpoint_url)
-                sparql.setQuery(sparql_query)
-                sparql.setReturnFormat(JSON)
-                results = sparql.query().convert()
-                preu_total = results["results"]["bindings"][0]["totalPreu"]["value"]
                 print(preu_total)
                 gr.add((comanda, ONTO.PreuTotal, Literal(preu_total, datatype=XSD.float)))
                 return gr.serialize(format='xml'), 200
 
 
-def agentbehavior1(cola, llista_productes, ciutat, priority, creditcard, dni):
+def agentbehavior1(cola, llista_productes, ciutat, priority, creditcard, dni,gm):
 
     for producte in llista_productes:
         value = "".join(f"<{producte}> ")
@@ -302,15 +261,15 @@ def agentbehavior1(cola, llista_productes, ciutat, priority, creditcard, dni):
     client = client_result["client"]["value"]
     print(client)
     if len(productes_centre1) > 0:
-        comanda_a_centre_logistic(productes_centre1,8014,ciutat,priority, creditcard, client)
+        comanda_a_centre_logistic(productes_centre1,8014,ciutat,priority, creditcard, client,gm)
     if len(productes_centre2) > 0:
-        comanda_a_centre_logistic(productes_centre2, 8015,ciutat,priority, creditcard, client)
+        comanda_a_centre_logistic(productes_centre2, 8015,ciutat,priority, creditcard, client,gm)
     if len(productes_centre3) > 0:
-        comanda_a_centre_logistic(productes_centre3, 8016,ciutat,priority, creditcard, client)
+        comanda_a_centre_logistic(productes_centre3, 8016,ciutat,priority, creditcard, client,gm)
     if len(productes_centre4) > 0:
-        comanda_a_centre_logistic(productes_centre4, 8017,ciutat,priority, creditcard, client)
+        comanda_a_centre_logistic(productes_centre4, 8017,ciutat,priority, creditcard, client,gm)
     if len(productes_centre5) > 0:
-        comanda_a_centre_logistic(productes_centre5, 8018,ciutat,priority, creditcard, client)
+        comanda_a_centre_logistic(productes_centre5, 8018,ciutat,priority, creditcard, client,gm)
 
     productes_centre1.clear()
     productes_centre2.clear()
@@ -319,25 +278,40 @@ def agentbehavior1(cola, llista_productes, ciutat, priority, creditcard, dni):
     productes_centre5.clear()
 
 
-def comanda_a_centre_logistic(productes, portcentrelogistic,ciutat,priority, creditcard, client):
+def comanda_a_centre_logistic(productes, portcentrelogistic,ciutat,priority, creditcard, client,gm):
     """
     Envia una comanda a un centre logístico.
     """
 
     gr = Graph()
+    acction = ONTO['ProcessarEnviament' + str(get_count())]
+    gr.add((acction, RDF.type, ONTO.ProcessarEnviament))
     comanda = ONTO['Comanda' + str(get_count())]
     gr.add((comanda, RDF.type, ONTO.Comanda))
     gr.add((comanda, ONTO.Ciutat, Literal(ciutat)))
     gr.add((comanda, ONTO.Prioritat, Literal(priority)))
     gr.add((comanda, ONTO.TargetaCredit, Literal(creditcard)))
     for producte in productes:
+        nom = gm.value(producte, ONTO.Nom)
+        preu = gm.value(producte, ONTO.Preu)
+        pes = gm.value(producte, ONTO.Pes)
+        gr.add((producte, RDF.type, ONTO.Producte))
+        gr.add((producte, ONTO.Nom, Literal(nom)))
+        gr.add((producte, ONTO.Preu, Literal(preu)))
+        gr.add((producte, ONTO.Pes, Literal(pes)))
         gr.add((comanda, ONTO.ProductesComanda, producte))
     gr.add((comanda, ONTO.ClientComanda, URIRef(client)))
 
+    gr.add((acction, ONTO.Processa, comanda))
     ServeiCentreLogistic = asignar_port_centre_logistic(portcentrelogistic)
 
-    msg = build_message(gr, perf=ACL.request, sender=ServeiComanda.uri, msgcnt=get_count(), receiver=ServeiCentreLogistic.uri)
+    msg = build_message(gr, ACL.request, ServeiCentreLogistic.uri, ServeiCentreLogistic.uri, acction, get_count())
     resposta = send_message(msg, ServeiCentreLogistic.address)
+    preu = 0
+    for s, p, o in resposta:
+        if p == ONTO.Preu:
+            preu = o
+    print(preu)
     return resposta
 
 

@@ -11,7 +11,7 @@ Tiene una funcion AgentBehavior1 que se lanza como un thread concurrente
 
 @author: pau-laia-anna
 """
-
+import multiprocessing
 import time, random
 import argparse
 import socket
@@ -25,7 +25,7 @@ from Utils.ACLMessages import *
 from Utils.Agent import Agent
 from Utils.FlaskServer import shutdown_server
 from Utils.Logger import config_logger
-from Utils.OntoNamespaces import ONTO, FONTO
+from Utils.OntoNamespaces import ONTO
 #from opencage.geocoder import OpenCageGeocode
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic, great_circle
@@ -39,8 +39,9 @@ from Utils.ACLMessages import send_message, build_message
 logger = config_logger(level=1)
 
 # Configuration stuff
-hostname = socket.gethostname()
-port = 9015
+hostname = "localhost"
+port = None
+ciutat = None
 
 agn = Namespace("http://www.agentes.org#")
 
@@ -49,41 +50,58 @@ mss_cnt = 0
 
 # Datos del Agente
 
-AgTransportista = Agent('AgentTransportista',
+AgTransportista = None
+
+def assignar_port_transportista():
+    return Agent('AgentTransportista',
                         agn.AgTransportista,
                         'http://%s:%d/comm' % (hostname, port),
                         'http://%s:%d/Stop' % (hostname, port))
 
-AgCentroLogistico = Agent('ServeiAssignadorTransportista',
-                          agn.Directory,
-                          'http://%s:9014/comm' % hostname,
-                          'http://%s:9014/Stop' % hostname)
-
-location_ny = (Nominatim(user_agent='myapplication').geocode("New York").latitude,
-               Nominatim(user_agent='myapplication').geocode("New York").longitude)
-location_bcn = (Nominatim(user_agent='myapplication').geocode("Barcelona").latitude,
-                Nominatim(user_agent='myapplication').geocode("Barcelona").longitude)
-location_pk = (Nominatim(user_agent='myapplication').geocode("Pekín").latitude,
-               Nominatim(user_agent='myapplication').geocode("Pekín").longitude)
+ServeiCentreLogistic = None
 
 # identificador transportista, nombre transportista, €/kg, €/km
-ny = [
-    ["Transportista_NACEX", "NACEX", 1, 0.012],
-    ["Transportista_SEUR", "SEUR", 1.08, 0.008],
-    ["Transportista_DHL", "DHL", 1, 0.009],
-    ["Transportista_FedEx", "FedEx", 0.9, 0.007]
+banyoles = [
+    ["Transportista_NACEX", "NACEX", 1.50, 0.010, 0.10],
+    ["Transportista_SEUR", "SEUR", 1.75, 0.012, 0.15],
+    ["Transportista_Correos", "Correos", 1.40, 0.009, 0.05]
 ]
 
-bcn = [
-    ["Transportista_SEUR", "SEUR", 1.03, 0.01],
-    ["Transportista_DHL", "DHL", 0.95, 0.008]
+barcelona = [
+    ["Transportista_SEUR", "SEUR", 1.75, 0.012, 0.15],
+    ["Transportista_DHL", "DHL", 1.90, 0.015, 0.20],
+    ["Transportista_FedEx", "FedEx", 2.00, 0.014, 0.18],
+    ["Transportista_UPS", "UPS", 1.85, 0.013, 0.17]
 ]
 
-pk = [
-    ["Transportista_SEUR", "SEUR", 0.93, 0.009],
-    ["Transportista_DHL", "DHL", 1.15, 0.01],
-    ["Transportista_FedEx", "FedEx", 1.02, 0.007]
+tarragona = [
+    ["Transportista_NACEX", "NACEX", 1.55, 0.011, 0.12],
+    ["Transportista_DHL", "DHL", 1.95, 0.016, 0.22],
+    ["Transportista_FedEx", "FedEx", 2.05, 0.014, 0.19],
+    ["Transportista_Correos", "Correos", 1.45, 0.010, 0.07]
 ]
+
+valencia = [
+    ["Transportista_NACEX", "NACEX", 1.60, 0.012, 0.13],
+    ["Transportista_SEUR", "SEUR", 1.80, 0.011, 0.14],
+    ["Transportista_UPS", "UPS", 1.90, 0.013, 0.16],
+    ["Transportista_Correos", "Correos", 1.50, 0.009, 0.08]
+]
+
+zaragoza = [
+    ["Transportista_DHL", "DHL", 1.85, 0.015, 0.20],
+    ["Transportista_FedEx", "FedEx", 2.10, 0.014, 0.21],
+    ["Transportista_Correos", "Correos", 1.55, 0.010, 0.09],
+    ["Transportista_UPS", "UPS", 1.95, 0.012, 0.18]
+]
+
+llista_tansportistas = {
+    "Banyoles": banyoles,
+    "Barcelona": barcelona,
+    "Tarragona": tarragona,
+    "Valencia": valencia,
+    "Zaragoza": zaragoza
+}
 
 gFirstOffers = Graph()
 
@@ -92,18 +110,35 @@ dsgraph = Graph()
 
 cola1 = Queue()
 global obj
-obj = ""
 # Flask stuff
 app = Flask(__name__)
 
+def run_agent(portx, city):
+    @app.route('/')
+    def index():
+        return f"Agent running on port {portx} in city {city}"
+
+    global port
+    port = portx
+    global ciutat
+    ciutat = city
+    global ServeiCentreLogistic
+    ServeiCentreLogistic = asignar_port_CentreLogistic(port - 5)
+    assignar_port_transportista()
+    app.run(host=hostname, port=portx)
+
+def asignar_port_CentreLogistic(port):
+    return  Agent('ServeiCentreLogistic',
+                               agn.ServeiCentreLogistic,
+                               f'http://{hostname}:{port}/comm',
+                               f'http://{hostname}:{port}/Stop')
 
 def get_count():
     global mss_cnt
     mss_cnt += 1
     return mss_cnt
 
-
-def calcular_fecha(priority):
+def calcular_data(priority):
     if priority == 1:
         return str(datetime.datetime.now() + datetime.timedelta(days=1))
     elif priority == 2:
@@ -111,20 +146,25 @@ def calcular_fecha(priority):
     return str(datetime.datetime.now() + datetime.timedelta(days=random.randint(5, 10)))
 
 
-def calcular_distancia(centro, city):
+def calcular_distancia( city):
     geolocator = Nominatim(user_agent='myapplication')
     location = geolocator.geocode(city)
     location = (location.latitude, location.longitude)
-    if centro == "Barcelona":
+    location_bany = (42.1167, 2.7667)
+    location_bcn = (41.3825, 2.1769)
+    location_ta = (41.1189, 1.2445)
+    location_val = (39.4699, -0.3763)
+    location_zar = (41.6488, -0.8891)
+    if ciutat == "Banyoles":
+        return great_circle(location_bany, location).km
+    elif ciutat == "Barcelona":
         return great_circle(location_bcn, location).km
-    elif centro == "New York":
-        return great_circle(location_ny, location).km
-    else:
-        return great_circle(location_pk, location).km
-
-
-obj = ""
-
+    elif ciutat == "Tarragona":
+        return great_circle(location_ta, location).km
+    elif ciutat == "Valencia":
+        return great_circle(location_val, location).km
+    elif ciutat == "Zaragoza":
+        return great_circle(location_zar, location).km
 
 @app.route("/comm")
 def communication():
@@ -133,12 +173,12 @@ def communication():
     """
     message = request.args['content']
     gm = Graph()
-    gm.parse(data=message)
+    gm.parse(data=message, format='xml')
 
     msgdic = get_message_properties(gm)
     global gFirstOffers
 
-    gr = None
+    gr = Graph()
     if msgdic is None:
         # Si no es, respondemos que no hemos entendido el mensaje
         gr = build_message(Graph(), ACL['not-understood'], sender=AgTransportista.uri, msgcnt=get_count())
@@ -157,59 +197,38 @@ def communication():
             peso_total = 0
             city = ""
             priority = 0.0
-            centro = ""
 
-            if accion == FONTO.EnviarCondicionsEnviament:
+            if accion == ONTO.EnviarCondicionsEnviament:
                 for s, p, o in gm:
-                    if p == FONTO.Pes:
+                    if p == ONTO.Pes:
                         peso_total = float(o)
-                    elif p == FONTO.Ciutat:
+                    elif p == ONTO.Ciutat:
                         city = str(o)
+                    elif p == ONTO.Prioritat:
+                        priority = int(o)
 
-                logger.info("Hemos recibido un lote del centro logístico de " + city + " para ser entregado")
-                logger.info("Calculamos el precio que cada transportista pide por el envío de este lote")
 
-                # id transoprtista, nombre, fecha prevista y precio
-                action = ONTO["PedirPreciosEnvio_" + str(get_count())]
-                gOfertas = Graph()
-                gOfertas.add((action, RDF.type, ONTO.PedirPreciosEnvio))
-                cl = []
-                if centro == "Barcelona":
-                    global bcn
-                    cl = bcn
-                elif centro == "New York":
-                    global ny
-                    cl = ny
-                elif centro == "Pekin":
-                    global pk
-                    cl = pk
-                gFirstOffers = Graph()
-                for tr in cl:
-                    trSuj = ONTO[tr[0]]
-                    gOfertas.add((action, ONTO.OfertaDe, trSuj))
-                    gOfertas.add((trSuj, RDF.type, ONTO.Transportista))
-                    gOfertas.add((trSuj, ONTO.Identificador, Literal(tr[0])))
-                    gOfertas.add((trSuj, ONTO.Nombre, Literal(tr[1])))
-                    fecha = calcular_fecha(priority)
-                    gOfertas.add((trSuj, ONTO.Fecha, Literal(fecha)))
-                    dist_fromcentro = calcular_distancia(centro, city)
-                    precio_envio = peso_total * tr[2] + dist_fromcentro * tr[3]
-                    gOfertas.add((trSuj, ONTO.PrecioTransporte, Literal(precio_envio)))
-                    logger.info(
-                        "Transportista: " + tr[0] + " / Fecha: " + str(fecha) + " / Precio_envio: " + str(precio_envio))
-                gFirstOffers = gOfertas
+                transportistes = llista_tansportistas[ciutat]
 
-                for s, p, o in gOfertas:
-                    if p == ONTO.Nombre:
-                        for s2, p2, o2 in gOfertas:
-                            if s == s2 and p == ONTO.PrecioTransporte:
-                                logger.info("El transportista " + o + " ofrece un precio de " + str(o2.toPython()))
+                action = ONTO["EnviarCondicionsEnviament_" + str(get_count())]
+                gr.add((accion, RDF.type, ONTO.EnviarCondicionsEnviament))
+                for t in transportistes:
+                    logger.info("Transportista " + t[1] + " ofrece un precio de " + str(t[2] * peso_total) + "€")
+                    oferta = ONTO["Oferta_" + str(get_count())]
+                    gr.add((action, ONTO.Oferta, oferta))
+                    gr.add((oferta, RDF.type, ONTO.Oferta))
+                    gr.add((oferta, ONTO.Transportista, ONTO[t[0]]))
+                    distancia = calcular_distancia(city)
+                    preu_transport = t[2] * (peso_total/1000) + distancia * t[3]
+                    gr.add((oferta, ONTO.Preu, Literal(preu_transport)))
+                    data = calcular_data(priority)
+                    gr.add((oferta, ONTO.Data, Literal(data)))
 
-                return gOfertas.serialize(format="xml"), 200
-
-            elif accion == FONTO.PedirContraofertasPreciosEnvio:
+                return gr.serialize(format="xml"), 200
+            """
+            elif accion == ONTO.PedirContraofertasPreciosEnvio:
                 gFinal = gFirstOffers
-                action = FONTO["PedirContraofertasPreciosEnvio_" + str(get_count())]
+                action = ONTO["PedirContraofertasPreciosEnvio_" + str(get_count())]
                 gFinal.add((action, RDF.type, ONTO.PedirContraofertasPreciosEnvio))
 
                 for s, p, o in gm:
@@ -235,7 +254,7 @@ def communication():
                             segunda_oferta) + "€")
                         gFinal.set((t, ONTO.PrecioTransporte, Literal(segunda_oferta)))
                 return gFinal.serialize(format="xml"), 200
-
+            
             elif accion == ONTO.EnviarPaquete:
                 for s, p, o in gm:
                     if p == ONTO.LoteFinal:
@@ -253,11 +272,11 @@ def communication():
                 p = Process(target=avisar_entrega, args=(g, action))
                 p.start()
                 return g.serialize(format='xml'), 200
-
+            
             else:  # CAL??
                 grr = Graph()
                 return grr.serialize(format="xml"), 200
-
+            
 
 def avisar_entrega(g=Graph(), action=""):
     time.sleep(3)
@@ -269,7 +288,7 @@ def avisar_entrega(g=Graph(), action=""):
 def entregar_producto():
     grr = Graph()
     return grr.serialize(format="xml"), 200
-
+"""
 
 @app.route("/Stop")
 def stop():
@@ -301,14 +320,20 @@ def agentbehavior1(cola):
 
 
 if __name__ == '__main__':
-    # Ponemos en marcha los behaviors
-    ab1 = Process(target=agentbehavior1, args=(cola1,))
-    ab1.start()
+    ports_cities = {
+        8019: 'Banyoles',
+        8020: 'Barcelona',
+        8021: 'Tarragona',
+        8022: 'Valencia',
+        8023: 'Zaragoza'
+    }
 
-    # Ponemos en marcha el servidor
-    app.run(host=hostname, port=port)
+    processes = []
 
-    # Esperamos a que acaben los behaviors
-    ab1.join()
+    for port, city in ports_cities.items():
+        p = multiprocessing.Process(target=run_agent, args=(port, city))
+        processes.append(p)
+        p.start()
 
-    print('The End')
+    for p in processes:
+        p.join()
