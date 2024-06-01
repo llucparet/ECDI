@@ -1,51 +1,42 @@
-from flask import Flask, request, jsonify
-from rdflib import Graph, Literal, URIRef, RDF, XSD, Namespace
-from rdflib.namespace import FOAF, RDF
-import logging
-import requests
+from SPARQLWrapper import JSON, SPARQLWrapper
+from flask import Flask, request
+from rdflib import Graph, RDF, Namespace, Literal, XSD, URIRef
+from multiprocessing import Queue, Process
 
-from Agents.AgentAssistent import ServeiBuscador
+from Agents.AgentAssistent import cola1
 from Utils.ACL import ACL
+from Utils.ACLMessages import build_message, get_message_properties
 from Utils.Agent import Agent
+from Utils.FlaskServer import shutdown_server
 from Utils.Logger import config_logger
 from Utils.OntoNamespaces import ONTO
-
-from Utils.ACLMessages import build_message, get_message_properties
-import random
 import socket
 import sys
-from multiprocessing import Queue, Process
-from flask import Flask, request
-from pyparsing import Literal
-from rdflib import XSD, Namespace, Literal, URIRef
 
-FUSEKI_SERVER = "http://localhost:3030/ONTO/query"
-DATASET_NAME = "myDataset"
-
+# Configuración de logging
 logger = config_logger(level=1)
 
-# Configuration stuff
-hostname = socket.gethostname()
+# Configuración del agente
+hostname = "localhost"
 port = 9010
 
+# Namespaces para RDF
 agn = Namespace("http://www.agentes.org#")
 
-# Contador de mensajes
-mss_cnt = 0
-
 # Datos del Agente
-AgBuscadorProductos = Agent('AgBuscadorProductos',
-                            agn.AgenteSimple,
-                            'http://%s:%d/comm' % (hostname, port),
-                            'http://%s:%d/Stop' % (hostname, port))
+ServeiBuscador = Agent('ServeiBuscador',
+                       agn.ServeiBuscador,
+                       f'http://{hostname}:{port}/comm',
+                       f'http://{hostname}:{port}/Stop')
 
 # Global triplestore graph
 dsgraph = Graph()
 
-cola1 = Queue()
-
 # Flask stuff
 app = Flask(__name__)
+
+# Contador de mensajes
+mss_cnt = 0
 
 
 def get_count():
@@ -54,167 +45,175 @@ def get_count():
     return mss_cnt
 
 
-def process_action(gm, msgdic):
-    """
-    Procesa la acción requerida por el mensaje ACL recibido.
-    """
-    content = msgdic['content']
-    action = gm.value(subject=content, predicate=RDF.type)
-    if action == ONTO.BuscarProductes:
-        return handle_search_products(gm, content)
-    else:
-        return build_message(Graph(), 'not-understood', ServeiBuscador.uri, ServeiBuscador.get_count())
-
-
-def handle_search_products(gm, content):
-    """
-    Procesa la petición de búsqueda de productos aplicando las Restriccioes dadas.
-    """
-    restrictions = {}
-    for restriction in gm.objects(content, ONTO.RestringidaPor):
-        if gm.value(restriction, RDF.type) == ONTO.RestriccioMarca:
-            restrictions['Marca'] = str(gm.value(restriction, ONTO.Marca))
-        elif gm.value(restriction, RDF.type) == ONTO.RestriccioNom:
-            restrictions['Nom'] = str(gm.value(restriction, ONTO.Nom))
-        elif gm.value(restriction, RDF.type) == ONTO.RestriccioPreu:
-            min_price = gm.value(restriction, ONTO.PreuMin)
-            max_price = gm.value(restriction, ONTO.PreuMax)
-            restrictions['PreuMin'] = float(min_price)
-            restrictions['PreuMax'] = float(max_price)
-        elif gm.value(restriction, RDF.type) == ONTO.RestriccioValoracio:
-            restrictions['Valoracio'] = float(gm.value(restriction, ONTO.Valoracio))
-
-    # Realiza la búsqueda de productos según las Restricciones procesadas
-    results = search_products(restrictions)
-    response_graph = build_response_graph(results)
-    return response_graph
-
-
-def search_products(restrictions):
-    """
-    Realiza la búsqueda de productos en la base de datos o triplestore según las Restriccioes.
-    Aquí se debería implementar una consulta SPARQL o un acceso a base de datos.
-    """
-    """
-        Realiza la búsqueda de productos en Apache Jena Fuseki según las Restriccioes dadas.
-        """
-    query = build_sparql_query(restrictions)
-    url = f"{FUSEKI_SERVER}/{DATASET_NAME}/query"
-    headers = {
-        "Content-Type": "application/sparql-query",
-        "Accept": "application/sparql-results+json"
-    }
-    response = requests.post(url, data=query, headers=headers)
-
-    if response.status_code == 200:
-        results = response.json()
-        return parse_sparql_results(results)
-    else:
-        logger.error(f"Error en la consulta SPARQL: {response.status_code}")
-        return []
-
-    # Ejemplo de resultados, deberías reemplazar esto con una consulta real
-    #return [{'uri': 'http://example.org/product/1', 'Nom': 'Producto 1', 'Preu': 100, 'Marca': 'Marca A','Valoracio': 5}]
-
-
-def build_sparql_query(restrictions):
-    """
-    Construye una consulta SPARQL basada en las Restriccioes dadas.
-    """
-    base_query = """
-    PREFIX ns: <http://www.owl-ontologies.com/OntologiaECSDI.owl#>
-    SELECT ?producto ?Nom ?Preu ?Marca ?Valoracio WHERE {
-        ?producto rdf:type ns:Producte.
-        ?producto ns:Nom ?Nom.
-        ?producto ns:Preu ?Preu.
-        ?producto ns:Marca ?Marca.
-        ?producto ns:Valoracio ?Valoracio.
-    """
-    filters = []
-
-    if 'Marca' in restrictions:
-        filters.append(f"?Marca = '{restrictions['Marca']}'")
-    if 'Nom' in restrictions:
-        filters.append(f"CONTAINS(LCASE(str(?Nom)), LCASE('{restrictions['Nom']}'))")
-    if 'PreuMin' in restrictions and 'PreuMax' in restrictions:
-        filters.append(f"?Preu >= {restrictions['PreuMin']} && ?Preu <= {restrictions['PreuMax']}")
-    if 'Valoracio' in restrictions:
-        filters.append(f"?Valoracio >= {restrictions['Valoracio']}")
-
-    if filters:
-        base_query += "FILTER (" + " && ".join(filters) + ")"
-
-    base_query += "}"
-    return base_query
-
-
-def parse_sparql_results(results):
-    """
-    Parsea los resultados de una consulta SPARQL en formato JSON.
-    """
-    parsed_results = []
-    for result in results['results']['bindings']:
-        producto = {
-            'uri': result['Producte']['value'],
-            'Nom': result['Nom']['value'],
-            'Preu': float(result['Preu']['value']),
-            'Marca': result['Marca']['value'],
-            'Categoria': result['Categoria']['value'],
-            'Pes': float(result['Pes']['value']),
-            'Valoracio': float(result['Valoracio']['value'])
-        }
-        parsed_results.append(producto)
-    return parsed_results
-
-
-def build_response_graph(results):
-    """
-    Construye un grafo RDF con los resultados de la búsqueda para enviar como respuesta.
-    """
-    g = Graph()
-    for result in results:
-        prod_uri = URIRef(result['uri'])
-        g.add((prod_uri, RDF.type, ONTO.Producte))
-        g.add((prod_uri, ONTO.Nom, Literal(result['Nom'])))
-        g.add((prod_uri, ONTO.Preu, Literal(result['Preu'], datatype=XSD.decimal)))
-        g.add((prod_uri, ONTO.Marca, Literal(result['Marca'])))
-        g.add((prod_uri, ONTO.Categoria, Literal(result['Categoria'])))
-        g.add((prod_uri, ONTO.Pes, Literal(result['Pes'], datatype=XSD.decimal)))
-        g.add((prod_uri, ONTO.Valoracio, Literal(result['Valoracio'], datatype=XSD.decimal)))
-    return g
-
-
-@app.route("/comm", methods=['POST'])
+@app.route("/comm", methods=['GET', 'POST'])
 def communication():
-    try:
-        data = request.data
-        gm = Graph()
-        gm.parse(data=data)
-        msgdic = get_message_properties(gm)
-        if not msgdic:
-            raise ValueError("Mensaje no entendido")
+    logger.info('Petición de información recibida')
 
+    if request.method == 'GET':
+        message = request.args['content']
+    elif request.method == 'POST':
+        message = request.data
+
+    gm = Graph()
+    gm.parse(data=message, format='xml')
+    msgdic = get_message_properties(gm)
+    gr = None
+
+    if msgdic is None:
+        # Si no es, respondemos que no hemos entendido el mensaje
+        gr = build_message(Graph(), ACL['not-understood'], sender=ServeiBuscador.uri, msgcnt=get_count())
+    else:
+        # Obtenemos la performativa
         if msgdic['performative'] != ACL.request:
-            raise ValueError("Performative no es request")
+            # Si no es un request, respondemos que no hemos entendido el mensaje
+            gr = build_message(Graph(),
+                               ACL['not-understood'],
+                               sender=ServeiBuscador.uri,
+                               msgcnt=get_count())
+        else:
+            # Extraemos el objeto del contenido que ha de ser una acción de la ontología
+            content = msgdic['content']
+            # Averiguamos el tipo de la acción
+            accion = gm.value(subject=content, predicate=RDF.type)
 
-        # Procesa la acción según el contenido del mensaje
-        content = msgdic['content']
-        gr = process_action(gm, content)
-        return gr.serialize(format='xml'), 200
-    except Exception as e:
-        logger.error(f"Error processing request: {str(e)}")
-        return build_message(Graph(), ACL['not-understood'], sender=ServeiBuscador.uri).serialize(format='xml'), 400
+            # Acción de buscar productos
+            if accion == ONTO.BuscarProductes:
+                restriccions = gm.objects(content, ONTO.Restriccions)
+                restriccions_dict = {}
+                for restriccio in restriccions:
+                    if gm.value(subject=restriccio, predicate=RDF.type) == ONTO.RestriccioMarca:
+                        marca = gm.value(subject=restriccio, predicate=ONTO.Marca)
+                        logger.info('BÚSQUEDA->Restriccion de Marca: ' + str(marca))
+                        restriccions_dict['marca'] = str(marca)
+
+                    elif gm.value(subject=restriccio, predicate=RDF.type) == ONTO.RestriccioPreu:
+                        preciomax = gm.value(subject=restriccio, predicate=ONTO.PreuMax)
+                        preciomin = gm.value(subject=restriccio, predicate=ONTO.PreuMin)
+                        if preciomin:
+                            logger.info('BÚSQUEDA->Restriccion de precio mínimo: ' + str(preciomin))
+                            restriccions_dict['preciomin'] = float(preciomin)
+                        if preciomax:
+                            logger.info('BÚSQUEDA->Restriccion de precio máximo: ' + str(preciomax))
+                            restriccions_dict['preciomax'] = float(preciomax)
+
+                    elif gm.value(subject=restriccio, predicate=RDF.type) == ONTO.RestriccioNom:
+                        nombre = gm.value(subject=restriccio, predicate=ONTO.Nom)
+                        logger.info('BÚSQUEDA->Restriccion de Nombre: ' + str(nombre))
+                        restriccions_dict['nombre'] = str(nombre)
+
+                    elif gm.value(subject=restriccio, predicate=RDF.type) == ONTO.RestriccioValoracio:
+                        valoracio = gm.value(subject=restriccio, predicate=ONTO.Valoracio)
+                        logger.info('BÚSQUEDA->Restriccion de Valoración: ' + str(valoracio))
+                        restriccions_dict['valoracio'] = float(valoracio)
+                        """""
+                    elif gm.value(subject=restriccio, predicate=RDF.type) == ONTO.RestriccioCategoria:
+                        categoria = gm.value(subject=restriccio, predicate=ONTO.Categoria)
+                        logger.info('BÚSQUEDA->Restriccion de Categoria: ' + str(categoria))
+                        restriccions_dict['categoria'] = str(categoria)
+                        """""
+
+                gr = buscar_productos(**restriccions_dict)
+
+    return gr.serialize(format='xml'), 200
 
 
-@app.route("/Stop", methods=['GET'])
+@app.route("/Stop")
 def stop():
     """
-    Stop the agent and the server.
+    Entrypoint que para el agente
+
+    :return:
     """
-    # Define o implementa esta función para cerrar el servidor correctamente
-    logger.info("Shutting down the server.")
-    return "Server is shutting down...", 200
+    tidyup()
+    shutdown_server()
+    return "Parando Servidor"
+
+
+def tidyup():
+    """
+    Acciones previas a parar el agente
+
+    """
+    pass
+
+
+def agentbehavior1(cola):
+    """
+    Un comportamiento del agente
+
+    :return:
+    """
+    pass
+
+
+def buscar_productos(valoracio=0.0, marca=None, preciomin=0.0, preciomax=sys.float_info.max, nombre=None):
+    graph = Graph()
+    endpoint_url = "http://localhost:3030/ONTO/query"
+
+    query = f"""
+        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        PREFIX ex: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
+
+        SELECT ?producte ?categoria ?nom ?pes ?preu ?marca ?valoracio
+        WHERE {{
+            ?producte rdf:type ex:Producte .
+            OPTIONAL {{ ?producte ex:Categoria ?categoria . }}
+            OPTIONAL {{ ?producte ex:Nom ?nom . }}
+            OPTIONAL {{ ?producte ex:Pes ?pes . }}
+            OPTIONAL {{ ?producte ex:Preu ?preu . }}
+            OPTIONAL {{ ?producte ex:Marca ?marca . }}
+            OPTIONAL {{ ?producte ex:Valoracio ?valoracio . }}
+        }}
+    """
+
+    print(query)
+
+
+    # Crear el objeto SPARQLWrapper y establecer la consulta
+    sparql = SPARQLWrapper(endpoint_url)
+    sparql.setQuery(query)
+    sparql.setReturnFormat(JSON)
+
+    # Ejecutar la consulta y obtener los resultados
+    try:
+        results = sparql.query().convert()
+
+        # Añadir los resultados JSON al gráfico RDF
+        for result in results["results"]["bindings"]:
+            producte = URIRef(result["producte"]["value"])
+            graph.add((producte, RDF.type, ONTO.Producte))
+
+            if "categoria" in result:
+                graph.add((producte, ONTO.Categoria, Literal(result["categoria"]["value"])))
+            if "nom" in result:
+                graph.add((producte, ONTO.Nom, Literal(result["nom"]["value"])))
+            if "pes" in result:
+                graph.add((producte, ONTO.Pes, Literal(result["pes"]["value"])))
+            if "preu" in result:
+                graph.add((producte, ONTO.Preu, Literal(result["preu"]["value"])))
+            if "marca" in result:
+                graph.add((producte, ONTO.Marca, Literal(result["marca"]["value"])))
+            if "valoracio" in result:
+                graph.add((producte, ONTO.Valoracio, Literal(result["valoracio"]["value"])))
+
+        return graph
+    except Exception as e:
+        print(f"Error al ejecutar la consulta: {e}")
+    return "Error en la consulta SPARQL", 500
+    # Si no es la acción esperada o hay algún otro problema, devolver un mensaje adecuado
+
+
+
 
 
 if __name__ == '__main__':
-    app.run(port=5000, debug=True)
+    # Ponemos en marcha los behaviors
+    ab1 = Process(target=agentbehavior1, args=(cola1,))
+    ab1.start()
+
+    # Ponemos en marcha el servidor
+    app.run(host=hostname, port=port)
+
+    # Esperamos a que acaben los behaviors
+    ab1.join()
+    print('The End')

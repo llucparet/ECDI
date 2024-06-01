@@ -14,7 +14,7 @@ __author__ = 'bejar'
 from rdflib import Graph, RDF, RDFS, OWL, Namespace, Literal
 
 # FIPA ACL Ontology
-#ACL = Namespace("http://www.nuin.org/ontology/fipa/acl#")
+ACL = Namespace("http://www.nuin.org/ontology/fipa/acl#")
 
 # OWL- S Ontology
 OWLSService = Namespace('http://www.daml.org/services/owl-s/1.2/Service.owl#')
@@ -39,4 +39,4 @@ GEO = Namespace('http://www.w3.org/2003/01/geo/wgs84_pos#')
 DSO = Namespace('http://www.semanticweb.org/directory-service-ontology#')
 
 # ECSDI Ontology Namespace
-ONTO = Namespace('http://www.semanticweb.org/nilde/ontologies/2024/4/#')
+ONTO = Namespace('http://www.semanticweb.org/nilde/ontologies/2024/4/')
