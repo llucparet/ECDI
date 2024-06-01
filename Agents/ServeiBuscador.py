@@ -146,10 +146,11 @@ def agentbehavior1(cola):
     pass
 
 
-def buscar_productos(valoracio=0.0, marca=None, preciomin=0.0, preciomax=sys.float_info.max, nombre=None):
-    graph = Graph()
+def buscar_productos(valoracio=0.0, marca=None, preciomin=0.0, preciomax=sys.float_info.max, nombre=None, categoria=None):
     endpoint_url = "http://localhost:3030/ONTO/query"
+    graph = Graph()
 
+    # Construcción de la consulta SPARQL
     query = f"""
         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         PREFIX ex: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
@@ -163,28 +164,28 @@ def buscar_productos(valoracio=0.0, marca=None, preciomin=0.0, preciomax=sys.flo
             OPTIONAL {{ ?producte ex:Preu ?preu . }}
             OPTIONAL {{ ?producte ex:Marca ?marca . }}
             OPTIONAL {{ ?producte ex:Valoracio ?valoracio . }}
-        }}
+            FILTER (?preu >= {float(preciomin)} && ?preu <= {float(preciomax)})
     """
+    if marca:
+        query += f"    FILTER (?marca = \"{marca}\")\n"
+    if nombre:
+        query += f"    FILTER (regex(?nom, \"{nombre}\", \"i\"))\n"
+    if valoracio > 0.0:
+        query += f"    FILTER (?valoracio >= {float(valoracio)})\n"
+    if categoria:
+        query += f"    FILTER (?categoria = \"{categoria}\")\n"
 
-    print(query)
+    query += "}"
 
-
-    # Crear el objeto SPARQLWrapper y establecer la consulta
     sparql = SPARQLWrapper(endpoint_url)
     sparql.setQuery(query)
     sparql.setReturnFormat(JSON)
 
-    # Ejecutar la consulta y obtener los resultados
     try:
         results = sparql.query().convert()
-
-        # Añadir los resultados JSON al gráfico RDF
         for result in results["results"]["bindings"]:
             producte = URIRef(result["producte"]["value"])
             graph.add((producte, RDF.type, ONTO.Producte))
-
-            if "categoria" in result:
-                graph.add((producte, ONTO.Categoria, Literal(result["categoria"]["value"])))
             if "nom" in result:
                 graph.add((producte, ONTO.Nom, Literal(result["nom"]["value"])))
             if "pes" in result:
@@ -195,12 +196,12 @@ def buscar_productos(valoracio=0.0, marca=None, preciomin=0.0, preciomax=sys.flo
                 graph.add((producte, ONTO.Marca, Literal(result["marca"]["value"])))
             if "valoracio" in result:
                 graph.add((producte, ONTO.Valoracio, Literal(result["valoracio"]["value"])))
-
+            if "categoria" in result:
+                graph.add((producte, ONTO.Categoria, Literal(result["categoria"]["value"])))
         return graph
     except Exception as e:
-        print(f"Error al ejecutar la consulta: {e}")
-    return "Error en la consulta SPARQL", 500
-    # Si no es la acción esperada o hay algún otro problema, devolver un mensaje adecuado
+        logger.error(f"Error al ejecutar la consulta SPARQL: {e}")
+        return Graph()  # Devolver un gráfico vacío en caso de error
 
 
 
