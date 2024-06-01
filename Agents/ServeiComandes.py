@@ -90,7 +90,7 @@ def obtener_coordenadas(ciudad):
     """
     Obtiene las coordenadas (latitud y longitud) de una ciudad utilizando el servicio Nominatim de OpenStreetMap.
     """
-    geolocator = Nominatim(user_agent="myGeocoder")
+    geolocator = Nominatim(user_agent="myapplication")
     location = geolocator.geocode(ciudad)
     if location:
         return (location.latitude, location.longitude)
@@ -280,14 +280,14 @@ def agentbehavior1(cola, llista_productes, ciutat, priority, creditcard, dni):
         print(productes_centre3)
         print(productes_centre4)
         print(productes_centre5)
-
+        print(dni)
     sparql_query = f"""
                     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
                     PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
                     SELECT ?client
                     WHERE {{
                         ?client rdf:type ont:Client .
-                        ?client ont:DNI "{{{dni}}}" .
+                        ?client ont:DNI "{dni}" .
                       }}
                   """
 
@@ -297,8 +297,10 @@ def agentbehavior1(cola, llista_productes, ciutat, priority, creditcard, dni):
     sparql.setQuery(sparql_query)
     sparql.setReturnFormat(JSON)
     results = sparql.query().convert()
-    client = results["results"]["bindings"]["client"]["value"]
-
+    print(results["results"]["bindings"])
+    client_result = results["results"]["bindings"][0]
+    client = client_result["client"]["value"]
+    print(client)
     if len(productes_centre1) > 0:
         comanda_a_centre_logistic(productes_centre1,8014,ciutat,priority, creditcard, client)
     if len(productes_centre2) > 0:
@@ -328,8 +330,9 @@ def comanda_a_centre_logistic(productes, portcentrelogistic,ciutat,priority, cre
     gr.add((comanda, ONTO.Ciutat, Literal(ciutat)))
     gr.add((comanda, ONTO.Prioritat, Literal(priority)))
     gr.add((comanda, ONTO.TargetaCredit, Literal(creditcard)))
-    gr.add((comanda, ONTO.ProductesComanda, productes))
-    gr.add((comanda, ONTO.ClientComanda, client))
+    for producte in productes:
+        gr.add((comanda, ONTO.ProductesComanda, producte))
+    gr.add((comanda, ONTO.ClientComanda, URIRef(client)))
 
     ServeiCentreLogistic = asignar_port_centre_logistic(portcentrelogistic)
 
