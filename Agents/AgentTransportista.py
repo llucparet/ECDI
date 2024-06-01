@@ -213,7 +213,7 @@ def communication():
                 action = ONTO["EnviarCondicionsEnviament_" + str(get_count())]
                 gr.add((accion, RDF.type, ONTO.EnviarCondicionsEnviament))
                 for t in transportistes:
-                    logger.info("Transportista " + t[1] + " ofrece un precio de " + str(t[2] * peso_total) + "€")
+
                     oferta = ONTO["Oferta_" + str(get_count())]
                     gr.add((action, ONTO.Oferta, oferta))
                     gr.add((oferta, RDF.type, ONTO.Oferta))
@@ -222,6 +222,7 @@ def communication():
                     gr.add((transportista, ONTO.Nom, Literal(t[1])))
                     distancia = calcular_distancia(city)
                     preu_transport = (t[2] * (peso_total/1000) + distancia * t[3]) * random.uniform(0.8,1.2)
+                    logger.info("Transportista " + t[1] + " ofrece un precio de " + str(preu_transport) + "€")
                     gr.add((oferta, ONTO.Preu, Literal(preu_transport)))
                     data = calcular_data(priority)
                     gr.add((oferta, ONTO.Data, Literal(data)))
@@ -263,41 +264,18 @@ def communication():
                             gr.add((action, ONTO.Preu, Literal(preu_contraoferta)))
                 print(trobat)
                 return gr.serialize(format="xml"), 200
-            """
-            elif accion == ONTO.EnviarPaquete:
+
+            elif accion == ONTO.EnviarPaquet:
+                c = ""
+                obj = ""
                 for s, p, o in gm:
-                    if p == ONTO.LoteFinal:
+                    if p == ONTO.Lot:
                         obj = str(o)
-                proceso = Process(target=entregar_producto, args=())
-                proceso.start()
-                obj = str(obj)
-
-                logger.info("Pedido entregado")
+                    elif p == ONTO.Ciutat:
+                        c = str(o)
+                logger.info("El transportista " + " ha recogido el paquete " + obj)
                 g = Graph()
-                action = ONTO["CobrarCompra_" + str(get_count())]
-
-                g.add((action, RDF.type, ONTO.CobrarCompra))
-                g.add((action, ONTO.LoteEntregado, Literal(obj)))
-                p = Process(target=avisar_entrega, args=(g, action))
-                p.start()
                 return g.serialize(format='xml'), 200
-            
-            else:  # CAL??
-                grr = Graph()
-                return grr.serialize(format="xml"), 200
-            
-
-def avisar_entrega(g=Graph(), action=""):
-    time.sleep(3)
-    send_message(
-        build_message(g, ACL.request, AgTransportista.uri, AgCentroLogistico.uri, action, get_count()),
-        AgCentroLogistico.address)
-
-
-def entregar_producto():
-    grr = Graph()
-    return grr.serialize(format="xml"), 200
-"""
 
 
 

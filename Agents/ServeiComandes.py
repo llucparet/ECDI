@@ -262,14 +262,19 @@ def agentbehavior1(cola, llista_productes, ciutat, priority, creditcard, dni,gm)
     print(client)
     if len(productes_centre1) > 0:
         comanda_a_centre_logistic(productes_centre1,8014,ciutat,priority, creditcard, client,gm)
+        print("hola")
     if len(productes_centre2) > 0:
         comanda_a_centre_logistic(productes_centre2, 8015,ciutat,priority, creditcard, client,gm)
+        print("hola")
     if len(productes_centre3) > 0:
         comanda_a_centre_logistic(productes_centre3, 8016,ciutat,priority, creditcard, client,gm)
+        print("hola")
     if len(productes_centre4) > 0:
         comanda_a_centre_logistic(productes_centre4, 8017,ciutat,priority, creditcard, client,gm)
+        print("hola")
     if len(productes_centre5) > 0:
         comanda_a_centre_logistic(productes_centre5, 8018,ciutat,priority, creditcard, client,gm)
+        print("hola")
 
     productes_centre1.clear()
     productes_centre2.clear()
@@ -312,7 +317,6 @@ def comanda_a_centre_logistic(productes, portcentrelogistic,ciutat,priority, cre
         if p == ONTO.Preu:
             preu = o
     print(preu)
-    return resposta
 
 
 # AgServicioPago ens avisa que ja ha realitzat el cobro i aixi podem realitzar la valoracio

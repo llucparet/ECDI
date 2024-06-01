@@ -51,6 +51,11 @@ ServeiComandes = Agent('ServeiComandes',
                        f'http://{hostname}:9012/comm',
                        f'http://{hostname}:9012/Stop')
 
+ServeiEntrega = Agent('ServeiEntrega',
+                      agn.ServeiEntrega,
+                      f'http://{hostname}:8000/comm',
+                      f'http://{hostname}:8000/Stop')
+
 def asignar_port_agenttrasportista(port):
     AgentTransportista = Agent('AgTransportista',
                                agn.AgentTransportista,
@@ -120,11 +125,11 @@ def communication():
                 action = ONTO["EnviarCondicionsEnviament" + str(count)]
                 gr.add((action, RDF.type, ONTO.EnviarCondicionsEnviament))
 
-                lot = ONTO["Lot" + str(count)]
+                lot = ONTO["Lot_" + str(count)]
+                print(lot)
                 pes_total = 0
                 gr.add((lot, RDF.type, ONTO.Lot))
-                gr.add((action, ONTO.EnviaCondicions, ONTO.Lot))
-                preu_compra = 0
+                gr.add((action, ONTO.EnviaCondicions, lot))
                 productes = []
                 for s, p, o in gm:
                     if p == ONTO.Ciutat:
@@ -167,16 +172,16 @@ def communication():
                     print("preu_mes_barat: ", preu_mes_barat)
                     print(ciutat)
                     count = get_count()
-                    gr = Graph()
+                    gO = Graph()
                     contraoferta_action = ONTO["EnviarContraoferta_" + str(count)]
-                    gr.add((contraoferta_action, RDF.type, ONTO.EnviarContraoferta))
-                    gr.add((contraoferta_action, ONTO.Preu,
+                    gO.add((contraoferta_action, RDF.type, ONTO.EnviarContraoferta))
+                    gO.add((contraoferta_action, ONTO.Preu,
                             Literal(preu_mes_barat * reduccio)))
-                    gr.add((contraoferta_action, ONTO.UltimPreu, Literal(preu_mes_barat)))
-                    gr.add((contraoferta_action, ONTO.Transportista, transportista))
-                    gr.add((transportista, ONTO.Nom, Literal(nom_transportista, datatype=XSD.string)))
+                    gO.add((contraoferta_action, ONTO.UltimPreu, Literal(preu_mes_barat)))
+                    gO.add((contraoferta_action, ONTO.Transportista, transportista))
+                    gO.add((transportista, ONTO.Nom, Literal(nom_transportista, datatype=XSD.string)))
                     AgentTransportista = asignar_port_agenttrasportista(port + 5)
-                    msg = build_message(gr, ACL.request, ServeiCentreLogistic.uri,
+                    msg = build_message(gO, ACL.request, ServeiCentreLogistic.uri,
                                         AgentTransportista.uri, contraoferta_action, count)
 
                     resposta_contraoferta = send_message(msg, AgentTransportista.address)
@@ -194,43 +199,52 @@ def communication():
                                 acceptada = True
                                 preu_mes_barat = nou_preu
                 print("hola2")
-                gr = Graph()
-                accion = ONTO["AssignarTransportista_" + str(count)]
-                gr.add((accion, RDF.type, ONTO.AssignarTransportista))
-                gr.add((accion, ONTO.Data, Literal(data)))
-                gr.add((accion, ONTO.Preu, Literal(preu_mes_barat)))
+                ab1 = Process(target=enviar_paquet,
+                              args=(gr, transportista))
+                ab1.start()
+                ab1.join()
+                gresposta = reclamar_pagament(gr,transportista,nom_transportista, preu_mes_barat, data)
 
-                """ 
-                gconfirm = Graph()
-                accion = ONTO["AssignarTransportista_" + str(count)]
-                gconfirm.add((accion, RDF.type, ONTO.AssignarTransportista))
-                gconfirm.add((accion, ONTO.ID, Literal(id_transportista_final, datatype=XSD.string)))
-                gconfirm.add((accion, ONTO.Nom, Literal(nom_transportista_final, datatype=XSD.string)))
-                gconfirm.add((accion, ONTO.AssignaLot, lot))
+                return gresposta.serialize(format='xml'), 200
 
-                logger.info("Enviamos la confirmación de la oferta al transportista" + nom_transportista_final)
+def enviar_paquet(gr):
+    genvio = Graph()
+    for s, p, o in gr:
+        if p == ONTO.EnviaCondicions:
+            lot = o
+    count = get_count()
+    accion = ONTO["AssignarTransportista_" + str(count)]
+    genvio.add((accion, RDF.type, ONTO.AssignarTransportista))
+    genvio.add((accion, ONTO.AssignarLot, lot))
+    AgentTransportista = asignar_port_agenttrasportista(port + 5)
+    msg = build_message(genvio, ACL.request, ServeiCentreLogistic.uri,
+                        AgentTransportista.uri, accion, count)
 
-                send_message(
-                    build_message(gconfirm, ACL.request, ServeiCentreLogistic.uri,
-                                  AgentTransportista.uri, accion, count),
-                    AgentTransportista.address
-                )
+    resposta = send_message(msg, AgentTransportista.address)
 
-                logger.info("Hemos enviado la assignación al transportista")
+    return resposta.serialize(format='xml'), 200
 
-                gcobrar = Graph()
-                accion = ONTO["CobrarProductes_" + str(count)]
-                gcobrar.add((accion, RDF.type, ONTO.CobrarProductes))
-                gcobrar.add((accion, ONTO.CobraLot, Literal(idLot, datatype=XSD.string)))
-                send_message(
-                    build_message(gcobrar, ACL.request, ServeiCentreLogistic.uri,
-                                  ServeiComandes.uri, accion, count),
-                    ServeiComandes.address
-                )
+def reclamar_pagament(gr,transportista, nom_transportista, preu_mes_barat, data):
+    genvio = Graph()
+    for s, p, o in gr:
+        if p == ONTO.EnviaCondicions:
+            lot = o
+    print(lot)
+    count = get_count()
+    accion = ONTO["InformarEnviament_" + str(count)]
+    genvio.add((accion, RDF.type, ONTO.InformarEnviament))
+    genvio.add((accion, ONTO.InforamrLot, lot))
+    genvio.add((accion, ONTO.Data, Literal(data, datatype=XSD.string)))
+    genvio.add((accion, ONTO.Transportista, transportista))
+    genvio.add((transportista, ONTO.Nom, nom_transportista))
+    genvio.add((accion, ONTO.Preu, Literal(preu_mes_barat, datatype=XSD.float)))
 
-                logger.info("Hemos cobrado los productos")
-                """
-                return gr.serialize(format='xml'), 200
+    msg = build_message(genvio, ACL.request, ServeiCentreLogistic.uri,
+                        ServeiEntrega.uri, accion, count)
+
+    resposta = send_message(msg, ServeiEntrega.address)
+
+    return resposta.serialize(format='xml'), 200
 
 
 if __name__ == '__main__':
