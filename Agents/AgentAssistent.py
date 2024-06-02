@@ -81,7 +81,79 @@ def initialize():
         elif 'submit' in request.form and request.form['submit'] == 'search_products':
             return flask.redirect("http://%s:%d/search_products" % (hostname, port))
 
+@app.route("/comm")
+def comunicacion():
+    """
+    Entrypoint de comunicacion
+    """
+    message = request.args['content']
+    gm = Graph()
+    gm.parse(data=message)
 
+    msgdic = get_message_properties(gm)
+
+    gr = None
+    global mss_cnt
+    if msgdic is None:
+        mss_cnt+=1
+        # Si no es, respondemos que no hemos entendido el mensaje
+        gr = build_message(Graph(), ACL['not-understood'], sender=AgentAssistent.uri, msgcnt=str(mss_cnt))
+    else:
+        # Obtenemos la performativa
+        if msgdic['performative'] != ACL.request:
+            # Si no es un request, respondemos que no hemos entendido el mensaje
+            gr = build_message(Graph(),
+                               ACL['not-understood'],
+                               sender=AgentAssistent.uri,
+                               msgcnt=str(mss_cnt))
+        else:
+            # Extraemos el objeto del contenido que ha de ser una accion de la ontologia
+            # de registro
+            content = msgdic['content']
+            # Averiguamos el tipo de la accion
+            accion = gm.value(subject=content, predicate=RDF.type)
+            if accion == ONTO.InformarEnviament:
+                logger.info("enviament començat")
+                gr = Graph()
+                gr.add((accion, RDF.type, ONTO.InformarEnviament))
+                gr.add((accion, ONTO.DNI, Literal(DNIusuari)))
+                return gr.serialize(format="xml"),200
+            """
+            if accion == ONTO.ProcesarEnvio:
+                global grafo_respuesta
+                grafo_respuesta = gm
+                global completo
+                completo = True
+                gr = Graph()
+                return gr.serialize(format="xml"),200
+
+            # Accion de valorar
+            elif accion == ONTO.ValorarProducto:
+                gr =Graph()
+                return gr.serialize(format="xml"),200
+
+            elif accion == ONTO.ConfirmarValoracion:
+                global productos_valorar_no_permitido
+                for s,p,o in gm:
+                    if p == ONTO.Nombre:
+                        if str(o) in productos_valorar_no_permitido:
+                            productos_valorar_no_permitido.remove(str(o))
+                gr = Graph()
+                return gr.serialize(format="xml"),200
+            elif accion == ONTO.RecomendarProducto:
+                subjects_productos_usuari = []
+                for s,p,o in gm:
+                    if p == ONTO.DNI and str(o) == nombreusuario:
+                        subjects_productos_usuari.append(str(s))
+                global productos_recomendados
+                productos_recomendados = []
+                for s,p,o in gm:
+                    if str(s) in subjects_productos_usuari:
+                        if p == ONTO.Nombre:
+                            productos_recomendados.append(str(o))
+                gr = Graph()
+                return gr.serialize(format="xml"),200
+"""
 @app.route("/hacer_pedido", methods=['GET', 'POST'])
 def hacer_pedido():
     global products_list, completo, info_bill

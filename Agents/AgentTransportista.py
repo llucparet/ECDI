@@ -266,14 +266,11 @@ def communication():
                 return gr.serialize(format="xml"), 200
 
             elif accion == ONTO.EnviarPaquet:
-                c = ""
-                obj = ""
+                lot = ""
                 for s, p, o in gm:
                     if p == ONTO.Lot:
-                        obj = str(o)
-                    elif p == ONTO.Ciutat:
-                        c = str(o)
-                logger.info("El transportista " + " ha recogido el paquete " + obj)
+                        lot = str(o)
+                logger.info("El transportista " + " ha recogido el paquete " + lot)
                 g = Graph()
                 return g.serialize(format='xml'), 200
 

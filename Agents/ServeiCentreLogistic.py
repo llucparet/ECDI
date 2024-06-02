@@ -1,10 +1,3 @@
-"""
-Agente Asistente para el sistema ECSDI.
-Utiliza Flask para la interacción web y RDFlib para la manipulación de grafos RDF.
-
-/comm -> Método POST para recibir mensajes ACL de otros agentes.
-/Stop -> Método GET para parar el agente.
-"""
 import multiprocessing
 import sys
 from multiprocessing import Process, Queue
@@ -128,6 +121,7 @@ def communication():
                 lot = ONTO["Lot_" + str(count)]
                 print(lot)
                 pes_total = 0
+                preu_compra = 0
                 gr.add((lot, RDF.type, ONTO.Lot))
                 gr.add((action, ONTO.EnviaCondicions, lot))
                 productes = []
@@ -144,6 +138,8 @@ def communication():
                         gr.add((o, RDF.type, ONTO.Producte))
                         gr.add((o, ONTO.Nom, Literal(o, datatype=XSD.string)))
                         gr.add((lot, ONTO.ProductesLot, o))
+                    elif p == ONTO.Comanda:
+                        gr.add((lot, ONTO.ComandaLot, o))
                 gr.add((lot, ONTO.Pes, Literal(pes_total, datatype=XSD.float)))
 
                 AgentTransportista = asignar_port_agenttrasportista(port + 5)
@@ -203,7 +199,7 @@ def communication():
                               args=(gr, transportista))
                 ab1.start()
                 ab1.join()
-                gresposta = reclamar_pagament(gr,transportista,nom_transportista, preu_mes_barat, data)
+                gresposta = reclamar_pagament(gr,transportista,nom_transportista, preu_mes_barat+preu_compra, data)
 
                 return gresposta.serialize(format='xml'), 200
 
@@ -224,20 +220,23 @@ def enviar_paquet(gr):
 
     return resposta.serialize(format='xml'), 200
 
-def reclamar_pagament(gr,transportista, nom_transportista, preu_mes_barat, data):
+def reclamar_pagament(gr,transportista, nom_transportista, preu, data):
     genvio = Graph()
     for s, p, o in gr:
         if p == ONTO.EnviaCondicions:
             lot = o
+        if p == ONTO.ComandaLot:
+            comanda = o
     print(lot)
     count = get_count()
     accion = ONTO["InformarEnviament_" + str(count)]
     genvio.add((accion, RDF.type, ONTO.InformarEnviament))
     genvio.add((accion, ONTO.InforamrLot, lot))
+    genvio.add((lot,ONTO.ComandaLot,comanda))
     genvio.add((accion, ONTO.Data, Literal(data, datatype=XSD.string)))
     genvio.add((accion, ONTO.Transportista, transportista))
     genvio.add((transportista, ONTO.Nom, nom_transportista))
-    genvio.add((accion, ONTO.Preu, Literal(preu_mes_barat, datatype=XSD.float)))
+    genvio.add((accion, ONTO.Preu, Literal(preu, datatype=XSD.float)))
 
     msg = build_message(genvio, ACL.request, ServeiCentreLogistic.uri,
                         ServeiEntrega.uri, accion, count)
