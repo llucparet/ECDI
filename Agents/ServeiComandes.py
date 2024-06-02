@@ -131,6 +131,7 @@ def registrar_comanda(id, ciutat, client, preu_total, prioritat, credit_card, pr
                        Literal(producte.get('Data', datetime(1970, 1, 1).date()), datatype=XSD.date)))
         g_comanda.add((producte_comanda_uri, ONTO.Pagat, Literal(producte.get('Pagat', False), datatype=XSD.boolean)))
         g_comanda.add((producte_comanda_uri, ONTO.Enviat, Literal(producte.get('Enviat', False), datatype=XSD.boolean)))
+        g_comanda.add((producte_comanda_uri, ONTO.Retornat, Literal(False, datatype=XSD.boolean)))
         g_comanda.add((producte_comanda_uri, ONTO.TransportistaProducte,
                        Literal(producte.get('Transportista', ""), datatype=XSD.string)))
         g_comanda.add((comanda, ONTO.ProductesComanda, producte_comanda_uri))

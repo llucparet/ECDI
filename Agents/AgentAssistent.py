@@ -430,7 +430,7 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
 
-    SELECT ?producte_comanda ?nom ?preu ?data ?pagado ?enviat ?transportista
+    SELECT ?producte_comanda ?nom ?preu ?data ?pagado ?enviat ?transportista ?retornat
     WHERE {{
         <{comanda_uri}> ont:ProductesComanda ?producte_comanda .
         ?producte_comanda rdf:type ont:ProducteComanda .
@@ -440,6 +440,7 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
         ?producte_comanda ont:Pagat ?pagado .
         ?producte_comanda ont:Enviat ?enviat .
         ?producte_comanda ont:TransportistaProducte ?transportista .
+        ?producte_comanda ont:Retornat ?retornat .
     }}
     ORDER BY ?producte_comanda
     """
@@ -457,9 +458,10 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
             "Data": result["data"]["value"][:10],
             "Pagado": result["pagado"]["value"],
             "Enviado": result["enviat"]["value"],
-            "Transportista": result["transportista"]["value"]
+            "Transportista": result["transportista"]["value"],
+            "Retornat": result["retornat"]["value"]
         }
-        print (producte)
+        print(producte)
         products.append(producte)
 
     # Implementar paginación

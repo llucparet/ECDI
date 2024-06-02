@@ -16,8 +16,8 @@
             align-items: center;
         }
         .container {
-            width: 90%;
-            max-width: 800px;
+            width: 95%;
+            max-width: 1200px;
             background: white;
             padding: 20px;
             border-radius: 8px;
@@ -86,6 +86,7 @@
                     <th>Transportista</th>
                     <th>Estat</th>
                     <th>Valoracio</th>
+                    <th>Retornat</th>
                 </tr>
             </thead>
             <tbody>
@@ -94,19 +95,26 @@
                     <td>{{ product.Nom }}</td>
                     <td>{{ product.Preu }} €</td>
                     <td>{{ product.Data }}</td>
-                    <td>{{ product.Transportista}}</td>
+                    <td>{{ product.Transportista }}</td>
                     <td>
                         {% if product.Enviado == 'true' %}
-                            <a href="/pagar/{{comanda.ID}}/{{ product.Nom }}" class="button">Pagar</a>
+                            <a href="/pagar/{{ comanda.ID }}/{{ product.Nom }}" class="button">Pagar</a>
                         {% else %}
                             Pendent de Enviament
                         {% endif %}
                     </td>
                     <td>
                         {% if product.Pagado == 'true' %}
-                            <a href="/valorar/{{comanda.ID}}/{{ product.Nom }}" class="button">Valorar</a>
+                            <a href="/valorar/{{ comanda.ID }}/{{ product.Nom }}" class="button">Valorar</a>
                         {% else %}
                             Pendent de pagament
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if product.Retornat == 'true' %}
+                            Sí
+                        {% else %}
+                            <a href="#" class="button">Retornar</a>
                         {% endif %}
                     </td>
                 </tr>
