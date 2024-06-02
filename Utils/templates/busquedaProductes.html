@@ -73,6 +73,7 @@
             <input type="text" name="PreuMin" placeholder="Precio mínimo">
             <input type="text" name="PreuMax" placeholder="Precio máximo">
             <input type="text" name="Valoracio" placeholder="Valoración mínima (0-5)">
+            <input type="text" name="Categoria" placeholder="Categoria">
             <input type="submit" name="submit" value="Buscar">
             {% if busquedafallida %}
             <p style="color:red;">No se han encontrado productos con esas restricciones.</p>
@@ -90,14 +91,16 @@
                     <th>MARCA</th>
                     <th>PRECIO</th>
                     <th>VALORACIÓN</th>
+                    <th>CATEGORIA</th>
                 </tr>
                 {% for p in products %}
                 <tr>
                     <td><input type="checkbox" name="checkbox" value="{{ loop.index0 }}"></td>
-                    <td>{{ p.name }}</td>
-                    <td>{{ p.brand }}</td>
-                    <td>{{ p.price }}</td>
-                    <td>{{ p.rating }}</td>
+                    <td>{{ p.Nom }}</td>
+                    <td>{{ p.Marca }}</td>
+                    <td>{{ p.Preu }}</td>
+                    <td>{{ p.Valoracio }}</td>
+                    <td>{{ p.Categoria }}</td>
                 </tr>
                 {% endfor %}
             </table>

@@ -18,7 +18,7 @@ logger = config_logger(level=1)
 
 # Configuración del agente
 hostname = "localhost"
-port = 9010
+port = 8003
 
 # Namespaces para RDF
 agn = Namespace("http://www.agentes.org#")
@@ -105,6 +105,11 @@ def communication():
                         valoracio = gm.value(subject=restriccio, predicate=ONTO.Valoracio)
                         logger.info('BÚSQUEDA->Restriccion de Valoración: ' + str(valoracio))
                         restriccions_dict['valoracio'] = float(valoracio)
+
+                    elif gm.value(subject=restriccio, predicate=RDF.type) == ONTO.RestriccioCategoria:
+                        categoria = gm.value(subject=restriccio, predicate=ONTO.Categoria)
+                        logger.info('BÚSQUEDA->Restriccion de Categoria: ' + str(categoria))
+                        restriccions_dict['categoria'] = str(categoria)
                         """""
                     elif gm.value(subject=restriccio, predicate=RDF.type) == ONTO.RestriccioCategoria:
                         categoria = gm.value(subject=restriccio, predicate=ONTO.Categoria)
@@ -146,45 +151,46 @@ def agentbehavior1(cola):
     pass
 
 
-def buscar_productos(valoracio=0.0, marca=None, preciomin=0.0, preciomax=sys.float_info.max, nombre=None):
-    graph = Graph()
+def buscar_productos(valoracio=0.0, marca=None, preciomin=0.0, preciomax=sys.float_info.max, nombre=None, categoria=None):
     endpoint_url = "http://localhost:3030/ONTO/query"
+    graph = Graph()
 
+    # Construcción de la consulta SPARQL
     query = f"""
         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         PREFIX ex: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
 
-        SELECT ?producte ?categoria ?nom ?pes ?preu ?marca ?valoracio
+        SELECT ?producte ?nom ?pes ?preu ?marca ?valoracio ?categoria
         WHERE {{
             ?producte rdf:type ex:Producte .
-            OPTIONAL {{ ?producte ex:Categoria ?categoria . }}
             OPTIONAL {{ ?producte ex:Nom ?nom . }}
             OPTIONAL {{ ?producte ex:Pes ?pes . }}
             OPTIONAL {{ ?producte ex:Preu ?preu . }}
             OPTIONAL {{ ?producte ex:Marca ?marca . }}
             OPTIONAL {{ ?producte ex:Valoracio ?valoracio . }}
-        }}
+            OPTIONAL {{ ?producte ex:Categoria ?categoria . }}
+            FILTER (?preu >= {float(preciomin)} && ?preu <= {float(preciomax)})
     """
+    if marca:
+        query += f"    FILTER (?marca = \"{marca}\")\n"
+    if nombre:
+        query += f"    FILTER (regex(?nom, \"{nombre}\", \"i\"))\n"
+    if valoracio > 0.0:
+        query += f"    FILTER (?valoracio >= {float(valoracio)})\n"
+    if categoria:
+        query += f"    FILTER (regex(?categoria, \"{categoria}\", \"i\"))\n"
 
-    print(query)
+    query += "}"
 
-
-    # Crear el objeto SPARQLWrapper y establecer la consulta
     sparql = SPARQLWrapper(endpoint_url)
     sparql.setQuery(query)
     sparql.setReturnFormat(JSON)
 
-    # Ejecutar la consulta y obtener los resultados
     try:
         results = sparql.query().convert()
-
-        # Añadir los resultados JSON al gráfico RDF
         for result in results["results"]["bindings"]:
             producte = URIRef(result["producte"]["value"])
             graph.add((producte, RDF.type, ONTO.Producte))
-
-            if "categoria" in result:
-                graph.add((producte, ONTO.Categoria, Literal(result["categoria"]["value"])))
             if "nom" in result:
                 graph.add((producte, ONTO.Nom, Literal(result["nom"]["value"])))
             if "pes" in result:
@@ -195,12 +201,12 @@ def buscar_productos(valoracio=0.0, marca=None, preciomin=0.0, preciomax=sys.flo
                 graph.add((producte, ONTO.Marca, Literal(result["marca"]["value"])))
             if "valoracio" in result:
                 graph.add((producte, ONTO.Valoracio, Literal(result["valoracio"]["value"])))
-
+            if "categoria" in result:
+                graph.add((producte, ONTO.Categoria, Literal(result["categoria"]["value"])))
         return graph
     except Exception as e:
-        print(f"Error al ejecutar la consulta: {e}")
-    return "Error en la consulta SPARQL", 500
-    # Si no es la acción esperada o hay algún otro problema, devolver un mensaje adecuado
+        logger.error(f"Error al ejecutar la consulta SPARQL: {e}")
+        return Graph()  # Devolver un gráfico vacío en caso de error
 
 
 

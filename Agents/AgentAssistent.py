@@ -30,7 +30,7 @@ app = Flask(__name__, template_folder='../Utils/templates')
 
 # Agentes del sistema
 AgentAssistent = Agent('AgentAssistent', agn.AgentAssistent, f'http://{hostname}:{port}/comm', f'http://{hostname}:{port}/Stop')
-ServeiBuscador = Agent('ServeiBuscador', agn.ServeiBuscador, f'http://{hostname}:9010/comm', f'http://{hostname}:9010/Stop')
+ServeiBuscador = Agent('ServeiBuscador', agn.ServeiBuscador, f'http://{hostname}:8003/comm', f'http://{hostname}:8003/Stop')
 ServeiComandes = Agent('ServeiComandes', agn.ServeiComandes, f'http://{hostname}:8012/comm', f'http://{hostname}:9012/Stop')
 
 cola1 = Queue()
@@ -258,7 +258,8 @@ def search_products():
             PreuMax = request.form['PreuMax']
             Marca = request.form['Marca']
             Valoracio = request.form['Valoracio']
-            products_list = buscar_productos(Nom, PreuMin, PreuMax, Marca, Valoracio)
+            Categoria = request.form.get('Categoria')
+            products_list = buscar_productos(Nom, PreuMin, PreuMax, Marca, Valoracio, Categoria)
             if len(products_list) == 0:
                 return render_template('busquedaProductes.html', products=None, usuario=DNIusuari, busquedafallida=True, errorvaloracio=False)
             elif Valoracio != "":
@@ -270,7 +271,7 @@ def search_products():
                 return flask.redirect("http://%s:%d/hacer_pedido" % (hostname, port))
 
 
-def buscar_productos(Nom=None, PreuMin=0.0, PreuMax=10000.0, Marca=None, Valoracio=0.0):
+def buscar_productos(Nom=None, PreuMin=0.0, PreuMax=10000.0, Marca=None, Valoracio=0.0, Categoria=None):
     global mss_cnt, products_list
     g = Graph()
 
@@ -307,11 +308,21 @@ def buscar_productos(Nom=None, PreuMin=0.0, PreuMax=10000.0, Marca=None, Valorac
         g.add((ratingRestriction, ONTO.Valoracio, Literal(Valoracio)))
         g.add((action, ONTO.Restriccions, URIRef(ratingRestriction)))
 
+    if Categoria:
+        categoryRestriction = ONTO['RestriccioCategoria' + str(mss_cnt)]
+        g.add((categoryRestriction, RDF.type, ONTO.RestriccioCategoria))
+        g.add((categoryRestriction, ONTO.Categoria, Literal(Categoria)))
+        g.add((action, ONTO.Restriccions, URIRef(categoryRestriction)))
+
+    print(f'Buscando productos con las siguientes restricciones: {Nom}, {PreuMin}, {PreuMax}, {Marca}, {Valoracio}, {Categoria}')
     msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiBuscador.uri, action, mss_cnt)
+    print(f'Mensaje construido: {msg}')
     mss_cnt += 1
 
     try:
+        print(f'Enviando mensaje a ServeiBuscador: {msg}')
         gproducts = send_message(msg, ServeiBuscador.address)
+        print(f'Respuesta recibida: {gproducts}')
         products_list = []
         subjects_position = {}
         pos = 0
@@ -336,6 +347,8 @@ def buscar_productos(Nom=None, PreuMin=0.0, PreuMax=10000.0, Marca=None, Valorac
                     product["Pes"] = o
                 if p == ONTO.Valoracio:
                     product["Valoracio"] = o
+                if p == ONTO.Categoria:
+                    product["Categoria"] = o
         logger.info(f'Productos recibidos: {products_list}')
         return products_list
     except Exception as e:

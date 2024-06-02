@@ -12,6 +12,7 @@ Esqueleto de agente usando los servicios web de Flask
 """
 
 import socket
+from datetime import datetime
 from multiprocessing import Queue, Process
 
 from SPARQLWrapper import RDF, SPARQLWrapper, JSON
@@ -25,7 +26,6 @@ from Utils.OntoNamespaces import ONTO
 from Utils.ACL import ACL
 from geopy.geocoders import Nominatim
 from geopy.distance import great_circle, geodesic
-
 
 from Utils.ACLMessages import build_message, send_message, get_message_properties
 
@@ -50,6 +50,7 @@ AgentAssistent = Agent('AgentAssistent',
                        agn.AgentAssistent,
                        'http://%s:9011/comm' % hostname,
                        'http://%s:9011/Stop' % hostname)
+
 
 def asignar_port_centre_logistic(port):
     portcentrelogistic = port
@@ -120,6 +121,42 @@ def centro_logistico_mas_cercano(ciudades_centros, ciudad_destino):
 
     return centro_mas_cercano
 
+
+def registrar_comanda(id, ciutat, client, data, preu_total, prioritat, credit_card, products):
+    comanda = URIRef(ONTO[id])
+    g_comanda = Graph()
+    g_comanda.bind("ns", ONTO)
+
+    g_comanda.add((comanda, RDF.type, ONTO.Comanda))
+    g_comanda.add((comanda, ONTO.ID, Literal(id, datatype=XSD.string)))
+    g_comanda.add((comanda, ONTO.Ciutat, Literal(ciutat, datatype=XSD.string)))
+    g_comanda.add((comanda, ONTO.Client, URIRef(client)))
+    g_comanda.add((comanda, ONTO.Data, Literal(data, datatype=XSD.date)))
+    g_comanda.add((comanda, ONTO.PreuTotal, Literal(preu_total, datatype=XSD.float)))
+    g_comanda.add((comanda, ONTO.Prioritat, Literal(prioritat, datatype=XSD.integer)))
+    g_comanda.add((comanda, ONTO.TargetaCredit, Literal(credit_card, datatype=XSD.string)))
+
+    for producte in products:
+        g_comanda.add((comanda, ONTO.ProductesComanda, URIRef(producte)))
+
+    # Serializar el grafo a formato RDF/XML
+    rdf_xml_data_comanda = g_comanda.serialize(format='xml')
+
+    # Cabeceras para la solicitud
+    headers = {
+        'Content-Type': 'application/rdf+xml'
+    }
+
+    # Enviamos los datos a Fuseki
+    response = requests.post(fuseki_url, data=rdf_xml_data_comanda, headers=headers)
+
+    # Verificamos la respuesta
+    if response.status_code == 200:
+        print('Comanda registrada exitosamente en Fuseki')
+    else:
+        print(f'Error al registrar la comanda en Fuseki: {response.status_code} - {response.text}')
+
+
 @app.route("/comm")
 def communication():
     """
@@ -161,7 +198,9 @@ def communication():
                 preu_total = 0
                 actionresposta = ONTO['EnviarRespostaTemptativa' + str(get_count())]
                 gr.add((actionresposta, RDF.type, ONTO.EnviarRespostaTemptativa))
-                comanda = ONTO['Comanda' + str(get_count())]
+                comanda_id = 'Comanda' + str(get_count())
+                comanda = ONTO[comanda_id]
+                print(comanda)
                 gr.add((comanda, RDF.type, ONTO.Comanda))
                 gr.add((actionresposta, ONTO.ComandaRespostaTemptativa, comanda))
                 ciutat = ""
@@ -189,16 +228,22 @@ def communication():
                         preu = float(gm.value(o, ONTO.Preu))
                         preu_total += preu
 
-                ab1 = Process(target=agentbehavior1, args=(cola1, llista_productes, ciutat, priority, creditcard,dni,comanda,gm))
+                ab1 = Process(target=agentbehavior1,
+                              args=(cola1, comanda_id, llista_productes, ciutat, priority, creditcard, dni, gm))
                 ab1.start()
                 print(preu_total)
                 gr.add((comanda, ONTO.PreuTotal, Literal(preu_total, datatype=XSD.float)))
                 return gr.serialize(format='xml'), 200
 
 
-def agentbehavior1(cola, llista_productes, ciutat, priority, creditcard, dni,comanda,gm):
-
+def agentbehavior1(cola, comanda_id, llista_productes, ciutat, priority, creditcard, dni, gm):
+    preu_total = 0
+    products = []
     for producte in llista_productes:
+        preu = float(gm.value(producte, ONTO.Preu))
+        preu_total += preu
+        products.append(producte)
+
         value = "".join(f"<{producte}> ")
         # Consulta SPARQL
         sparql_query = f"""
@@ -260,21 +305,20 @@ def agentbehavior1(cola, llista_productes, ciutat, priority, creditcard, dni,com
     client_result = results["results"]["bindings"][0]
     client = client_result["client"]["value"]
     print(client)
+
+    data = datetime.now().strftime("%Y-%m-%d")
+    registrar_comanda(comanda_id, ciutat, client, data, preu_total, priority, creditcard, products)
+    """
     if len(productes_centre1) > 0:
-        comanda_a_centre_logistic(productes_centre1,8014,ciutat,priority, creditcard, client,comanda,gm)
-        print("hola")
+        comanda_a_centre_logistic(productes_centre1,8014,ciutat,priority, creditcard, client,gm)
     if len(productes_centre2) > 0:
-        comanda_a_centre_logistic(productes_centre2, 8015,ciutat,priority, creditcard,comanda, client,gm)
-        print("hola")
+        comanda_a_centre_logistic(productes_centre2, 8015,ciutat,priority, creditcard, client,gm)
     if len(productes_centre3) > 0:
-        comanda_a_centre_logistic(productes_centre3, 8016,ciutat,priority, creditcard,comanda, client,gm)
-        print("hola")
+        comanda_a_centre_logistic(productes_centre3, 8016,ciutat,priority, creditcard, client,gm)
     if len(productes_centre4) > 0:
-        comanda_a_centre_logistic(productes_centre4, 8017,ciutat,priority, creditcard,comanda, client,gm)
-        print("hola")
+        comanda_a_centre_logistic(productes_centre4, 8017,ciutat,priority, creditcard, client,gm)
     if len(productes_centre5) > 0:
-        comanda_a_centre_logistic(productes_centre5, 8018,ciutat,priority, creditcard, client,comanda,gm)
-        print("hola")
+        comanda_a_centre_logistic(productes_centre5, 8018,ciutat,priority, creditcard, client,gm)
 
     productes_centre1.clear()
     productes_centre2.clear()
@@ -283,7 +327,7 @@ def agentbehavior1(cola, llista_productes, ciutat, priority, creditcard, dni,com
     productes_centre5.clear()
 
 
-def comanda_a_centre_logistic(productes, portcentrelogistic,ciutat,priority, creditcard, client,comanda,gm):
+def comanda_a_centre_logistic(productes, portcentrelogistic,ciutat,priority, creditcard, client,gm):
     """
     Envia una comanda a un centre logístico.
     """
@@ -291,6 +335,7 @@ def comanda_a_centre_logistic(productes, portcentrelogistic,ciutat,priority, cre
     gr = Graph()
     acction = ONTO['ProcessarEnviament' + str(get_count())]
     gr.add((acction, RDF.type, ONTO.ProcessarEnviament))
+    comanda = ONTO['Comanda' + str(get_count())]
     gr.add((comanda, RDF.type, ONTO.Comanda))
     gr.add((comanda, ONTO.Ciutat, Literal(ciutat)))
     gr.add((comanda, ONTO.Prioritat, Literal(priority)))
@@ -309,13 +354,14 @@ def comanda_a_centre_logistic(productes, portcentrelogistic,ciutat,priority, cre
     gr.add((acction, ONTO.Processa, comanda))
     ServeiCentreLogistic = asignar_port_centre_logistic(portcentrelogistic)
 
-    msg = build_message(gr, ACL.request, ServeiComanda.uri, ServeiCentreLogistic.uri, acction, get_count())
+    msg = build_message(gr, ACL.request, ServeiCentreLogistic.uri, ServeiCentreLogistic.uri, acction, get_count())
     resposta = send_message(msg, ServeiCentreLogistic.address)
     preu = 0
     for s, p, o in resposta:
         if p == ONTO.Preu:
             preu = o
     print(preu)
+    return resposta
 
 
 # AgServicioPago ens avisa que ja ha realitzat el cobro i aixi podem realitzar la valoracio
