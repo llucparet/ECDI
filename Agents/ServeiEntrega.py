@@ -159,38 +159,49 @@ def communication():
                     nom_producte = producte_result["nom"]["value"]
                     print(nom_producte)
 
-                    delete_query = f"""
-                    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-                    PREFIX onto: <http://example.org/ontology#>
-                    DELETE
+                    fuseki_url = 'http://localhost:3030/ONTO/update'
+
+
+                    # Defineix la consulta SPARQL amb les variables
+                    sparql_query = f"""
+                    PREFIX ontologies: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
+                    PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+                    DELETE {{
+                        ?producteComanda ontologies:Data ?oldData .
+                        ?producteComanda ontologies:Pagat ?oldPagat .
+                        ?producteComanda ontologies:TransportistaProducte ?oldTransportista .
+                    }}
+                    INSERT {{
+                        ?producteComanda ontologies:Data "2023-06-01"^^xsd:date .
+                        ?producteComanda ontologies:Pagat true .
+                        ?producteComanda ontologies:TransportistaProducte "NouTransportista" .
+                    }}
                     WHERE {{
-                        ?comanda rdf:type ex:Comanda .
-                        ?comanda ex:ProductesComanda ?producteComanda .
-                        VALUES ?comanda {{ <{comanda}> }}
-                        VALUES ?producteComanda {{ <{nom_producte}> }}
+                        <{comanda}> ontologies:ProductesComanda ?producteComanda .
+                        ?producteComanda ontologies:Nom "{nom_producte}" .
+
+                        OPTIONAL {{ ?producteComanda ontologies:Data ?oldData . }}
+                        OPTIONAL {{ ?producteComanda ontologies:Pagat ?oldPagat . }}
+                        OPTIONAL {{ ?producteComanda ontologies:TransportistaProducte ?oldTransportista . }}
                     }}
                     """
 
+                    # Defineix els encapçalaments HTTP
+                    headers = {
+                        'Content-Type': 'application/sparql-update'
+                    }
 
-                    # URL del endpoint de Fuseki
-                    fuseki_url_update = 'http://localhost:3030/ONTO/update'
+                    # Envia la sol·licitud POST al servidor Fuseki
+                    response = requests.post(fuseki_url, data=sparql_query, headers=headers)
 
-                    # Executar la consulta DELETE
-                    response_delete = requests.post(fuseki_url_update, data={'update': delete_query},
-                                                    headers={'Content-Type': 'application/x-www-form-urlencoded'})
-                    if response_delete.status_code == 200:
-                        print("DELETE query successful")
+                    # Mostra la resposta
+                    if response.status_code == 200:
+                        print("Consulta SPARQL executada correctament.")
                     else:
-                        print(f"DELETE query failed: {response_delete.text}")
-                    """
-                    # Executar la consulta INSERT
-                    response_insert = requests.post(fuseki_url_update, data={'update': insert_query},
-                                                    headers={'Content-Type': 'application/x-www-form-urlencoded'})
-                    if response_insert.status_code == 200:
-                        print("INSERT query successful")
-                    else:
-                        print(f"INSERT query failed: {response_insert.text}")
-                    """
+                        print(f"Error en executar la consulta SPARQL: {response.status_code}")
+                        print(response.text)
+
                 return gg.serialize(format="xml"),200
 
                 """
