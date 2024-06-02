@@ -173,9 +173,9 @@ def communication():
                         ?producteComanda ontologies:TransportistaProducte ?oldTransportista .
                     }}
                     INSERT {{
-                        ?producteComanda ontologies:Data "2023-06-01"^^xsd:date .
+                        ?producteComanda ontologies:Data "{data}"^^xsd:date .
                         ?producteComanda ontologies:Pagat true .
-                        ?producteComanda ontologies:TransportistaProducte "NouTransportista" .
+                        ?producteComanda ontologies:TransportistaProducte "{transportista}" .
                     }}
                     WHERE {{
                         <{comanda}> ontologies:ProductesComanda ?producteComanda .
@@ -196,7 +196,7 @@ def communication():
                     response = requests.post(fuseki_url, data=sparql_query, headers=headers)
 
                     # Mostra la resposta
-                    if response.status_code == 200:
+                    if response.status_code == 204:
                         print("Consulta SPARQL executada correctament.")
                     else:
                         print(f"Error en executar la consulta SPARQL: {response.status_code}")
