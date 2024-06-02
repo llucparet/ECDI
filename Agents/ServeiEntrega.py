@@ -105,6 +105,7 @@ def communication():
                 print("Enviament informat")
                 #aqui em retorna el dni de l'usuari i gurdo la comanda
                 llista_porductes = []
+
                 dni = ""
                 comanda = ""
                 data = ""
@@ -117,9 +118,6 @@ def communication():
                         comanda = o
                     elif p == ONTO.ProducteLot:
                         llista_porductes.append(o)
-                        gr.add((o, RDF.type, ONTO.Producte))
-                        nom = gm.value(subject=o, predicate=ONTO.Nom)
-                        gr.add((o, ONTO.Nom, nom))
                     elif p == ONTO.Data:
                         data = o
                         gr.add((accion, ONTO.Data, o))
@@ -129,9 +127,7 @@ def communication():
                     elif p == ONTO.Preu:
                         gg.add((accion, ONTO.Preu, o))
                 gr.add((accion, RDF.type, ONTO.InformarEnviament))
-                msg = build_message(gr, ACL.request, ServeiEntrega.uri, AgentAssistent.uri, accion,
-                                    get_count())
-                resposta = send_message(msg, AgentAssistent.address)
+
                 print("Enviament informat2")
                 print(llista_porductes)
                 print(comanda)
@@ -164,7 +160,7 @@ def communication():
                     producte_result= results["results"]["bindings"][0]
                     nom_producte = producte_result["nom"]["value"]
                     print(nom_producte)
-
+                    gr.add((producte, ONTO.Nom, Literal(nom_producte)))
                     fuseki_url = 'http://localhost:3030/ONTO/update'
 
 
@@ -175,12 +171,12 @@ def communication():
 
                     DELETE {{
                         ?producteComanda ontologies:Data ?oldData .
-                        ?producteComanda ontologies:Pagat ?oldPagat .
+                        ?producteComanda ontologies:Enviat ?oldPagat .
                         ?producteComanda ontologies:TransportistaProducte ?oldTransportista .
                     }}
                     INSERT {{
                         ?producteComanda ontologies:Data "{data}"^^xsd:date .
-                        ?producteComanda ontologies:Pagat true .
+                        ?producteComanda ontologies:Enviat true .
                         ?producteComanda ontologies:TransportistaProducte "{transportista}" .
                     }}
                     WHERE {{
@@ -188,7 +184,7 @@ def communication():
                         ?producteComanda ontologies:Nom "{nom_producte}" .
 
                         OPTIONAL {{ ?producteComanda ontologies:Data ?oldData . }}
-                        OPTIONAL {{ ?producteComanda ontologies:Pagat ?oldPagat . }}
+                        OPTIONAL {{ ?producteComanda ontologies:Enviat ?oldPagat . }}
                         OPTIONAL {{ ?producteComanda ontologies:TransportistaProducte ?oldTransportista . }}
                     }}
                     """
@@ -208,6 +204,9 @@ def communication():
                         print(f"Error en executar la consulta SPARQL: {response.status_code}")
                         print(response.text)
 
+                msg = build_message(gr, ACL.request, ServeiEntrega.uri, AgentAssistent.uri, accion,
+                                    get_count())
+                resposta = send_message(msg, AgentAssistent.address)
                 return gg.serialize(format="xml"),200
 
                 """

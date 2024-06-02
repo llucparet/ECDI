@@ -146,6 +146,7 @@ def registrar_comanda(id, ciutat, client, preu_total, prioritat, credit_card, pr
         g_comanda.add((producte_comanda_uri, ONTO.Data,
                        Literal(producte.get('Data', datetime(1970, 1, 1).date()), datatype=XSD.date)))
         g_comanda.add((producte_comanda_uri, ONTO.Pagat, Literal(producte.get('Pagat', False), datatype=XSD.boolean)))
+        g_comanda.add((producte_comanda_uri, ONTO.Enviat, Literal(producte.get('Enviat', False), datatype=XSD.boolean)))
         g_comanda.add((producte_comanda_uri, ONTO.TransportistaProducte,
                        Literal(producte.get('Transportista', ""), datatype=XSD.string)))
         g_comanda.add((comanda, ONTO.ProductesComanda, producte_comanda_uri))
@@ -259,6 +260,7 @@ def agentbehavior1(cola, comanda_id, llista_productes, ciutat, priority, creditc
 
         # Asignar valores por defecto ya que no se envían en gm
         pagat = False
+        enviat = False
         transportista = ""
         # La fecha de entrega no se debe leer de los datos RDF, la inicializamos a una fecha por defecto
         data_entrega = datetime(1970, 1, 1).date()
@@ -270,6 +272,7 @@ def agentbehavior1(cola, comanda_id, llista_productes, ciutat, priority, creditc
             'Preu': preu,
             'DataEntrega': data_entrega,
             'Pagat': pagat,
+            'Enviat': enviat,
             'Transportista': transportista
         })
 

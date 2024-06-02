@@ -95,7 +95,7 @@
                     <td>{{ product.Data }}</td>
                     <td>{{ product.Transportista}}</td>
                     <td>
-                        {% if product.Pagado %}
+                        {% if product.Enviado == true %}
                             <a href="/pagar/{{ product.ID }}" class="button">Pagar</a>
                         {% else %}
                             Pendent de pagament

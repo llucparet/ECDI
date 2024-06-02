@@ -42,19 +42,23 @@ products_list = []
 DNIusuari = ""
 usuari= ""
 completo = False
-info_bill = {}
-productos_valorar_no_permitido = []
 
+
+productes_enviats = []
 
 @app.route("/", methods=['GET', 'POST'])
 def initialize():
-    global DNIusuari, productos_recomendados, products_list, completo, info_bill
+    global DNIusuari, productos_recomendados, products_list, completo, info_bill, productes_enviats
     if request.method == 'GET':
         if DNIusuari:
-            if not productos_recomendados:
-                return render_template('home.html', products=None, usuario=DNIusuari, recomendacion=False)
+            if productes_enviats:
+                aux = productes_enviats
+                productes_enviats = []
+                return render_template('home.html', products=aux, usuario=DNIusuari, recomendacion=False,notificacio=True)
+            elif not productos_recomendados:
+                return render_template('home.html', products=None, usuario=DNIusuari, recomendacion=False,notificacio=False)
             else:
-                return render_template('home.html', products=productos_recomendados, usuario=DNIusuari, recomendacion=True)
+                return render_template('home.html', products=productos_recomendados, usuario=DNIusuari, recomendacion=True,notificacio=False)
         else:
             return render_template('usuari.html')
     elif request.method == 'POST':
@@ -115,6 +119,11 @@ def comunicacion():
             print(accion)
             if accion == ONTO.InformarEnviament:
                 logger.info("enviament començat")
+                for s,p,o in gm:
+                    if p == ONTO.Nom:
+                        productes_enviats.append(str(o))
+
+                print(productes_enviats)
                 gr.add((accion, RDF.type, ONTO.InformarEnviament))
                 gr.add((accion, ONTO.DNI, Literal(DNIusuari)))
                 return gr.serialize(format="xml"),200
@@ -421,7 +430,7 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
 
-    SELECT ?producte_comanda ?nom ?preu ?data ?pagado ?transportista
+    SELECT ?producte_comanda ?nom ?preu ?data ?pagado ?enviat ?transportista
     WHERE {{
         <{comanda_uri}> ont:ProductesComanda ?producte_comanda .
         ?producte_comanda rdf:type ont:ProducteComanda .
@@ -429,6 +438,7 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
         ?producte_comanda ont:Preu ?preu .
         ?producte_comanda ont:Data ?data .
         ?producte_comanda ont:Pagat ?pagado .
+        ?producte_comanda ont:Enviat ?enviat .
         ?producte_comanda ont:TransportistaProducte ?transportista .
     }}
     ORDER BY ?producte_comanda
@@ -446,6 +456,7 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
             "Preu": result["preu"]["value"],
             "Data": result["data"]["value"][:10],
             "Pagado": result["pagado"]["value"],
+            "Enviado": result["enviat"]["value"],
             "Transportista": result["transportista"]["value"]
         }
         print (producte)

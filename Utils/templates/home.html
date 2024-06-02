@@ -61,6 +61,8 @@
 </head>
 <body>
     <div class="container">
+
+
         <h1>AGENTE ASISTENTE ECSDI</h1>
         <p>Usuario activo: {{ usuario }}</p>
 
@@ -72,13 +74,24 @@
         <form action="/historial_comandes" method="get">
             <input type="submit" name="submit" value="Historial de Comandas">
         </form>
-        <p>Visualiza el historial de tus comandas realizadas.</p>
-
         {% if recomendacion %}
         <p>¡Estos son los últimos productos que te recomendamos! ¡Aprovecha!</p>
         <table>
             <tr>
                 <th>NOMBRE</th>
+            </tr>
+            {% for p in products %}
+            <tr>
+                <td>{{ p }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% endif %}
+        {% if notificacio %}
+        <p>¡Estos son los últimos productos que te recomendamos! ¡Aprovecha!</p>
+        <table>
+            <tr>
+                <th>Els productes de la seguent llista han sigut enviats i ja esta disponible el seu pagament (pots consultar la data d'entrega a "Historial de Compres"</th>
             </tr>
             {% for p in products %}
             <tr>
