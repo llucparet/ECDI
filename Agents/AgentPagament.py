@@ -28,7 +28,7 @@ agn = Namespace("http://www.agentes.org#")
 mss_cnt = 0
 endpoint_url = "http://localhost:3030/ONTO/query"
 
-fuseki_url = 'http://localhost:3030/ONTO/data'
+fuseki_url = 'http://localhost:3030/ONTO/update'
 
 AgentPagament = Agent('AgentPagament',
                       agn.AgentPagament,

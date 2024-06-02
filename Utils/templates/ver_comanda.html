@@ -96,10 +96,12 @@
                     <td>{{ product.Data }}</td>
                     <td>{{ product.Transportista}}</td>
                     <td>
-                        {% if product.Enviado == 'true' %}
+                        {% if product.Enviado == 'true' and product.Pagado == 'false'%}
                             <a href="/pagar/{{comanda.ID}}/{{ product.Nom }}" class="button">Pagar</a>
-                        {% else %}
+                        {% elif product.Enviado == 'false' %}
                             Pendent de Enviament
+                        {% else %}
+                            Pagat!!
                         {% endif %}
                     </td>
                     <td>
