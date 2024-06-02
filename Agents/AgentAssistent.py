@@ -476,6 +476,19 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
 
     return comanda
 
+@app.route("/pagar/<comanda_id>/<producte_nom>", methods=['GET'])
+def pagar_producte(producte_nom, comanda_id):
+    g = Graph()
+    action = ONTO['CobrarProductes' + str(mss_cnt)]
+    g.add((action, RDF.type, ONTO.CobrarProductes))
+    g.add((action, ONTO.DNI, Literal(DNIusuari)))
+    g.add((action, ONTO.NomProducte, Literal(producte_nom)))
+    g.add((action, ONTO.Comanda, Literal(comanda_id)))
+    msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiBuscador.uri, action, mss_cnt)
+    mss_cnt += 1
+    gproducts = send_message(msg, ServeiBuscador.address)
+    return redirect(url_for('#'), code=200)
+
 def agentbehavior1(queue):
     """
     Un comportamiento del agente

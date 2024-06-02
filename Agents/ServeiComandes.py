@@ -1,16 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Agente Gestor de Compra.
-Tiene una funcion AgentBehavior1 que se lanza como un thread concurrente
-
-Esqueleto de agente usando los servicios web de Flask
-
-/comm es la entrada para la recepcion de mensajes del agente
-/Stop es la entrada que para el agente
-
-@author: pau-laia-anna
-"""
-
 import socket
 from datetime import datetime
 from multiprocessing import Queue, Process
@@ -64,16 +52,12 @@ def asignar_port_centre_logistic(port):
 
 
 # Global triplestore graph
-dsgraph = Graph()
 
 cola1 = Queue()
 
 # Flask stuff
 app = Flask(__name__)
 
-graph_compra = Graph()
-precio_total_compra = 0.0
-ultima_compra = Graph()
 
 productes_centre1 = []
 productes_centre2 = []
