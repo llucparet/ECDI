@@ -24,9 +24,11 @@ centros_logisticos = ["http://www.semanticweb.org/ecsdi/ontologies/2024/4/Banyol
                       "http://www.semanticweb.org/ecsdi/ontologies/2024/4/Valencia",
                       "http://www.semanticweb.org/ecsdi/ontologies/2024/4/Zaragoza"]
 
+
 # Función para generar un ID único
 def generate_id():
     return f"P{random.randint(1000, 9999)}"
+
 
 def random_name(prefix, size=6, chars=string.ascii_uppercase + string.digits):
     """
@@ -38,6 +40,8 @@ def random_name(prefix, size=6, chars=string.ascii_uppercase + string.digits):
     :return:
     """
     return prefix + '_' + ''.join(random.choice(chars) for _ in range(size))
+
+
 if __name__ == '__main__':
     # Crear instancias de productos aleatorios
     for cat in categories:
@@ -61,7 +65,6 @@ if __name__ == '__main__':
                 weight = round(random.uniform(450, 3000), 2)
                 price = round(random.uniform(1000, 2500), 2)
 
-
             product = URIRef(NS[product_id])
 
             g.add((product, RDF.type, NS.Producte))
@@ -84,7 +87,7 @@ if __name__ == '__main__':
                 g.add((product, NS.ProductesCentreLogistic, centro))
     # Guardar el grafo en formato RDF/XML
     g.serialize(destination="productos.rdf", format="xml")
-    
+
     print("Se han generado instancias de productos aleatorios y se han guardado en 'productos.rdf'")
     # Serializar el grafo a formato RDF/XML
     rdf_xml_data = g.serialize(format='xml')

@@ -18,7 +18,7 @@ logger = config_logger(level=1)
 
 # Configuración del agente
 hostname = "localhost"
-port = 9010
+port = 8003
 
 # Namespaces para RDF
 agn = Namespace("http://www.agentes.org#")

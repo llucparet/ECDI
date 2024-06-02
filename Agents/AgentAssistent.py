@@ -30,7 +30,7 @@ app = Flask(__name__, template_folder='../Utils/templates')
 
 # Agentes del sistema
 AgentAssistent = Agent('AgentAssistent', agn.AgentAssistent, f'http://{hostname}:{port}/comm', f'http://{hostname}:{port}/Stop')
-ServeiBuscador = Agent('ServeiBuscador', agn.ServeiBuscador, f'http://{hostname}:9010/comm', f'http://{hostname}:9010/Stop')
+ServeiBuscador = Agent('ServeiBuscador', agn.ServeiBuscador, f'http://{hostname}:8003/comm', f'http://{hostname}:8003/Stop')
 ServeiComandes = Agent('ServeiComandes', agn.ServeiComandes, f'http://{hostname}:8012/comm', f'http://{hostname}:9012/Stop')
 
 cola1 = Queue()
@@ -242,11 +242,15 @@ def buscar_productos(Nom=None, PreuMin=0.0, PreuMax=10000.0, Marca=None, Valorac
         g.add((categoryRestriction, ONTO.Categoria, Literal(Categoria)))
         g.add((action, ONTO.Restriccions, URIRef(categoryRestriction)))
 
+    print(f'Buscando productos con las siguientes restricciones: {Nom}, {PreuMin}, {PreuMax}, {Marca}, {Valoracio}, {Categoria}')
     msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiBuscador.uri, action, mss_cnt)
+    print(f'Mensaje construido: {msg}')
     mss_cnt += 1
 
     try:
+        print(f'Enviando mensaje a ServeiBuscador: {msg}')
         gproducts = send_message(msg, ServeiBuscador.address)
+        print(f'Respuesta recibida: {gproducts}')
         products_list = []
         subjects_position = {}
         pos = 0
