@@ -335,27 +335,34 @@ def agentbehavior1(cola, comanda_id, llista_productes, ciutat, priority, creditc
     client = client_result["client"]["value"]
     print(client)
 
-    gg = registrar_comanda(comanda_id, ciutat, client, preu_total, priority, creditcard, products)
+    registrar_comanda(comanda_id, ciutat, client, preu_total, priority, creditcard, products)
 
+    comandos = []
     if len(productes_centre1) > 0:
-        pr = comanda_a_centre_logistic(productes_centre1,8014,ciutat,priority, creditcard, client,comanda,gm,gg)
-        print(pr)
+        comandos.append((productes_centre1, 8014))
     if len(productes_centre2) > 0:
-        pr = comanda_a_centre_logistic(productes_centre2, 8015,ciutat,priority, creditcard, client,comanda,gm,gg)
-        print(pr)
-
+        comandos.append((productes_centre2, 8015))
     if len(productes_centre3) > 0:
-        pr = comanda_a_centre_logistic(productes_centre3, 8016,ciutat,priority, creditcard, client,comanda,gm,gg)
-        print(pr)
-
+        comandos.append((productes_centre3, 8016))
     if len(productes_centre4) > 0:
-        pr = comanda_a_centre_logistic(productes_centre4, 8017,ciutat,priority, creditcard, client,comanda,gm,gg)
-        print(pr)
-
+        comandos.append((productes_centre4, 8017))
     if len(productes_centre5) > 0:
-        pr = comanda_a_centre_logistic(productes_centre5, 8018,ciutat,priority, creditcard, client,comanda,gm,gg)
-        print(pr)
+        comandos.append((productes_centre5, 8018))
 
+    queue = Queue()
+    processes = []
+
+    for productes, centre_id in comandos:
+        p = Process(target=enviar_comanda,
+                    args=(productes, centre_id, ciutat, priority, creditcard, client, comanda, gm, queue))
+        processes.append(p)
+        p.start()
+
+    for p in processes:
+        p.join()
+
+    while not queue.empty():
+        print(queue.get())
 
     productes_centre1.clear()
     productes_centre2.clear()
@@ -363,8 +370,10 @@ def agentbehavior1(cola, comanda_id, llista_productes, ciutat, priority, creditc
     productes_centre4.clear()
     productes_centre5.clear()
 
-
-def comanda_a_centre_logistic(productes, portcentrelogistic,ciutat,priority, creditcard, client,comanda,gm,gg):
+def enviar_comanda(productes, centre_id, ciutat, priority, creditcard, client, comanda, gm, queue):
+    pr = comanda_a_centre_logistic(productes, centre_id, ciutat, priority, creditcard, client, comanda, gm)
+    queue.put(pr)
+def comanda_a_centre_logistic(productes, portcentrelogistic,ciutat,priority, creditcard, client,comanda,gm):
     """
     Envia una comanda a un centre logístico.
     """
