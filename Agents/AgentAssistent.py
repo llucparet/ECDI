@@ -444,10 +444,11 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
         producte = {
             "Nom": result["nom"]["value"],
             "Preu": result["preu"]["value"],
-            "Data": result["data"]["value"],
+            "Data": result["data"]["value"][:10],
             "Pagado": result["pagado"]["value"],
             "Transportista": result["transportista"]["value"]
         }
+        print (producte)
         products.append(producte)
 
     # Implementar paginación

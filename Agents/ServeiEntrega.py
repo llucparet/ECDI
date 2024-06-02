@@ -101,10 +101,7 @@ def communication():
             count = get_count()
             # Accion de hacer pedido
             if accion == ONTO.InformarEnviament:
-                gr.add((accion, RDF.type, ONTO.InformarEnviament))
-                msg = build_message(gr, ACL.request, ServeiEntrega.uri, AgentAssistent.uri, accion,
-                                    get_count())
-                resposta = send_message(msg, AgentAssistent.address)
+
                 print("Enviament informat")
                 #aqui em retorna el dni de l'usuari i gurdo la comanda
                 llista_porductes = []
@@ -120,12 +117,21 @@ def communication():
                         comanda = o
                     elif p == ONTO.ProducteLot:
                         llista_porductes.append(o)
-                    elif p == ONTO.Data :
+                        gr.add((o, RDF.type, ONTO.Producte))
+                        nom = gm.value(subject=o, predicate=ONTO.Nom)
+                        gr.add((o, ONTO.Nom, nom))
+                    elif p == ONTO.Data:
                         data = o
+                        gr.add((accion, ONTO.Data, o))
                     elif p == ONTO.Transportista:
                         transportista = gm.value(subject=o, predicate=ONTO.Nom)
+                        gr.add((accion, ONTO.Transportista, o))
                     elif p == ONTO.Preu:
                         gg.add((accion, ONTO.Preu, o))
+                gr.add((accion, RDF.type, ONTO.InformarEnviament))
+                msg = build_message(gr, ACL.request, ServeiEntrega.uri, AgentAssistent.uri, accion,
+                                    get_count())
+                resposta = send_message(msg, AgentAssistent.address)
                 print("Enviament informat2")
                 print(llista_porductes)
                 print(comanda)

@@ -83,7 +83,8 @@
                     <th>Producto</th>
                     <th>Precio</th>
                     <th>Fecha de Entrega</th>
-                    <th>Pagado</th>
+                    <th>Transportista</th>
+                    <th>Estat</th>
                 </tr>
             </thead>
             <tbody>
@@ -91,8 +92,15 @@
                 <tr>
                     <td>{{ product.Nom }}</td>
                     <td>{{ product.Preu }} €</td>
-                    <td>{{ product.DataEntrega }}</td>
-                    <td>{{ product.Pagado }}</td>
+                    <td>{{ product.Data }}</td>
+                    <td>{{ product.Transportista}}</td>
+                    <td>
+                        {% if product.Pagado %}
+                            <a href="/pagar/{{ product.ID }}" class="button">Pagar</a>
+                        {% else %}
+                            Pendent de pagament
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
