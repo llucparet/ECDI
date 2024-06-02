@@ -124,7 +124,7 @@ def centro_logistico_mas_cercano(ciudades_centros, ciudad_destino):
     return centro_mas_cercano
 
 
-def registrar_comanda(id, ciutat, client, data, preu_total, prioritat, credit_card, products):
+def registrar_comanda(id, ciutat, client, preu_total, prioritat, credit_card, products):
     comanda = URIRef(ONTO[id])
     g_comanda = Graph()
     g_comanda.bind("ns", ONTO)
@@ -133,13 +133,16 @@ def registrar_comanda(id, ciutat, client, data, preu_total, prioritat, credit_ca
     g_comanda.add((comanda, ONTO.ID, Literal(id, datatype=XSD.string)))
     g_comanda.add((comanda, ONTO.Ciutat, Literal(ciutat, datatype=XSD.string)))
     g_comanda.add((comanda, ONTO.Client, URIRef(client)))
-    g_comanda.add((comanda, ONTO.Data, Literal(data, datatype=XSD.date)))
     g_comanda.add((comanda, ONTO.PreuTotal, Literal(preu_total, datatype=XSD.float)))
     g_comanda.add((comanda, ONTO.Prioritat, Literal(prioritat, datatype=XSD.integer)))
     g_comanda.add((comanda, ONTO.TargetaCredit, Literal(credit_card, datatype=XSD.string)))
 
     for producte in products:
-        g_comanda.add((comanda, ONTO.ProductesComanda, URIRef(producte)))
+        product_uri = URIRef(ONTO[producte])
+        g_comanda.add((comanda, ONTO.ProductesComanda, product_uri))
+        g_comanda.add((product_uri, ONTO.Transportista, Literal("", datatype=XSD.string)))  # Transportista vacío
+        g_comanda.add((product_uri, ONTO.DataEntrega, Literal("", datatype=XSD.date)))  # Fecha de entrega vacía
+        g_comanda.add((product_uri, ONTO.Pagado, Literal(False, datatype=XSD.boolean)))  # Estado de pago a false
 
     # Serializar el grafo a formato RDF/XML
     rdf_xml_data_comanda = g_comanda.serialize(format='xml')
@@ -308,8 +311,7 @@ def agentbehavior1(cola, comanda_id, llista_productes, ciutat, priority, creditc
     client = client_result["client"]["value"]
     print(client)
 
-    data = datetime.now().strftime("%Y-%m-%d")
-    registrar_comanda(comanda_id, ciutat, client, data, preu_total, priority, creditcard, products)
+    registrar_comanda(comanda_id, ciutat, client, preu_total, priority, creditcard, products)
     """
     if len(productes_centre1) > 0:
         comanda_a_centre_logistic(productes_centre1, 8014, ciutat, priority, creditcard, client, gm)
