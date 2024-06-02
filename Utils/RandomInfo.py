@@ -24,6 +24,11 @@ centros_logisticos = ["http://www.semanticweb.org/ecsdi/ontologies/2024/4/Banyol
                       "http://www.semanticweb.org/ecsdi/ontologies/2024/4/Valencia",
                       "http://www.semanticweb.org/ecsdi/ontologies/2024/4/Zaragoza"]
 
+venedors_externs = {
+    "Nike": "ESBN00909191",
+    "IKEA": "ESBN0123442212",
+    "Apple": "ESBN91120302102"
+}
 
 # Función para generar un ID único
 def generate_id():
@@ -43,6 +48,13 @@ def random_name(prefix, size=6, chars=string.ascii_uppercase + string.digits):
 
 
 if __name__ == '__main__':
+    # Crear instancias de vendedores externos
+    for venedor, compte in venedors_externs.items():
+        venedor_uri = URIRef(NS[venedor])
+        g.add((venedor_uri, RDF.type, NS.VenedorExtern))
+        g.add((venedor_uri, NS.Nom, Literal(venedor, datatype=XSD.string)))
+        g.add((venedor_uri, NS.CompteBancari, Literal(compte, datatype=XSD.string)))
+
     # Crear instancias de productos aleatorios
     for cat in categories:
         for _ in range(20):
