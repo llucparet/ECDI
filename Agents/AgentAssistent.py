@@ -360,10 +360,22 @@ def buscar_productos(Nom=None, PreuMin=0.0, PreuMax=10000.0, Marca=None, Valorac
 def historial_comandes():
     global DNIusuari
     comandas = consultar_comandas(DNIusuari)
+    print(comandas)
     return render_template('historial_comandes.html', comandas=comandas)
+
+@app.route("/comanda/<comanda_id>", methods=['GET'])
+def ver_comanda(comanda_id):
+    page = request.args.get('page', 1, type=int)
+    products_per_page = 10
+    comanda = consultar_productes_comanda(comanda_id, page, products_per_page)
+    total_pages = (comanda['TotalProducts'] // products_per_page) + 1
+
+    return render_template('ver_comanda.html', comanda=comanda, page=page, total_pages=total_pages)
+
 
 def consultar_comandas(dni):
     endpoint_url = "http://localhost:3030/ONTO/query"
+    client_uri = f"http://www.semanticweb.org/nilde/ontologies/2024/4/{dni}"
 
     sparql_query_comandas = f"""
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -373,13 +385,15 @@ def consultar_comandas(dni):
     WHERE {{
         ?comanda rdf:type ont:Comanda .
         ?comanda ont:Ciutat ?ciutat .
-        ?comanda ont:Client <http://www.semanticweb.org/nilde/ontologies/2024/4/{dni}> .
+        ?comanda ont:Client ?client .
         ?comanda ont:PreuTotal ?preu_total .
         ?comanda ont:Prioritat ?prioritat .
         ?comanda ont:TargetaCredit ?creditCard .
+        VALUES ?client {{ <{client_uri}> }}
     }}
     ORDER BY ?comanda
     """
+
     sparql = SPARQLWrapper(endpoint_url)
     sparql.setQuery(sparql_query_comandas)
     sparql.setReturnFormat(JSON)
@@ -399,34 +413,27 @@ def consultar_comandas(dni):
     return comandas
 
 
-@app.route("/comanda/<comanda_id>", methods=['GET'])
-def ver_comanda(comanda_id):
-    page = request.args.get('page', 1, type=int)
-    products_per_page = 10
-    comanda = consultar_productes_comanda(comanda_id, page, products_per_page)
-    total_pages = (comanda['TotalProducts'] // products_per_page) + 1
-
-    return render_template('ver_comanda.html', comanda=comanda, page=page, total_pages=total_pages)
-
-
 def consultar_productes_comanda(comanda_id, page, products_per_page):
     endpoint_url = "http://localhost:3030/ONTO/query"
+    comanda_uri = f"http://www.semanticweb.org/nilde/ontologies/2024/4/{comanda_id}"
 
-    # Primera consulta para obtener los productos de la comanda
     sparql_query_productes = f"""
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
 
-    SELECT ?producte ?transportista ?data_entrega ?pagado ?nom ?preu
+    SELECT ?producte_comanda ?nom ?preu ?data ?pagado ?transportista
     WHERE {{
-        <http://www.semanticweb.org/nilde/ontologies/2024/4/{comanda_id}> ont:ProductesComanda ?producte .
-        ?producte ont:Transportista ?transportista ;
-                  ont:DataEntrega ?data_entrega ;
-                  ont:Pagado ?pagado ;
-                  ont:Nom ?nom ;
-                  ont:Preu ?preu .
+        <{comanda_uri}> ont:ProductesComanda ?producte_comanda .
+        ?producte_comanda rdf:type ont:ProducteComanda .
+        ?producte_comanda ont:Nom ?nom .
+        ?producte_comanda ont:Preu ?preu .
+        ?producte_comanda ont:Data ?data .
+        ?producte_comanda ont:Pagat ?pagado .
+        ?producte_comanda ont:TransportistaProducte ?transportista .
     }}
+    ORDER BY ?producte_comanda
     """
+
     sparql = SPARQLWrapper(endpoint_url)
     sparql.setQuery(sparql_query_productes)
     sparql.setReturnFormat(JSON)
@@ -437,8 +444,9 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
         producte = {
             "Nom": result["nom"]["value"],
             "Preu": result["preu"]["value"],
-            "DataEntrega": result["data_entrega"]["value"],
-            "Pagado": result["pagado"]["value"]
+            "Data": result["data"]["value"],
+            "Pagado": result["pagado"]["value"],
+            "Transportista": result["transportista"]["value"]
         }
         products.append(producte)
 
