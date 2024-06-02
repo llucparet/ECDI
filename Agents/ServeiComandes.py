@@ -132,13 +132,12 @@ def registrar_comanda(id, ciutat, client, preu_total, prioritat, credit_card, pr
     g_comanda.add((comanda, ONTO.ID, Literal(id, datatype=XSD.string)))
     g_comanda.add((comanda, ONTO.Ciutat, Literal(ciutat, datatype=XSD.string)))
     g_comanda.add((comanda, ONTO.Client, URIRef(client)))
-    g_comanda.add((comanda, ONTO.Data, Literal(data, datatype=XSD.date)))
     g_comanda.add((comanda, ONTO.PreuTotal, Literal(preu_total, datatype=XSD.float)))
     g_comanda.add((comanda, ONTO.Prioritat, Literal(prioritat, datatype=XSD.integer)))
     g_comanda.add((comanda, ONTO.TargetaCredit, Literal(credit_card, datatype=XSD.string)))
 
     for producte in products:
-        producte_comanda_id = f"{id}_ProducteComanda_{producte['ID']}"
+        producte_comanda_id = f"{id}_ProducteComanda_{producte["ID"]}"
         producte_comanda_uri = URIRef(ONTO[producte_comanda_id])
 
         g_comanda.add((producte_comanda_uri, RDF.type, ONTO.ProducteComanda))
@@ -168,6 +167,8 @@ def registrar_comanda(id, ciutat, client, preu_total, prioritat, credit_card, pr
         print('Comanda registrada exitosamente en Fuseki')
     else:
         print(f'Error al registrar la comanda en Fuseki: {response.status_code} - {response.text}')
+
+    return g_comanda
 
 
 @app.route("/comm")
@@ -334,26 +335,25 @@ def agentbehavior1(cola, comanda_id, llista_productes, ciutat, priority, creditc
     client = client_result["client"]["value"]
     print(client)
 
-    data = datetime.now().strftime("%Y-%m-%d")
-    registrar_comanda(comanda_id, ciutat, client, data, preu_total, priority, creditcard, products)
+    gg = registrar_comanda(comanda_id, ciutat, client, preu_total, priority, creditcard, products)
 
     if len(productes_centre1) > 0:
-        pr = comanda_a_centre_logistic(productes_centre1,8014,ciutat,priority, creditcard, client,comanda,gm)
+        pr = comanda_a_centre_logistic(productes_centre1,8014,ciutat,priority, creditcard, client,comanda,gm,gg)
         print(pr)
     if len(productes_centre2) > 0:
-        pr = comanda_a_centre_logistic(productes_centre2, 8015,ciutat,priority, creditcard, client,comanda,gm)
+        pr = comanda_a_centre_logistic(productes_centre2, 8015,ciutat,priority, creditcard, client,comanda,gm,gg)
         print(pr)
 
     if len(productes_centre3) > 0:
-        pr = comanda_a_centre_logistic(productes_centre3, 8016,ciutat,priority, creditcard, client,comanda,gm)
+        pr = comanda_a_centre_logistic(productes_centre3, 8016,ciutat,priority, creditcard, client,comanda,gm,gg)
         print(pr)
 
     if len(productes_centre4) > 0:
-        pr = comanda_a_centre_logistic(productes_centre4, 8017,ciutat,priority, creditcard, client,comanda,gm)
+        pr = comanda_a_centre_logistic(productes_centre4, 8017,ciutat,priority, creditcard, client,comanda,gm,gg)
         print(pr)
 
     if len(productes_centre5) > 0:
-        pr = comanda_a_centre_logistic(productes_centre5, 8018,ciutat,priority, creditcard, client,comanda,gm)
+        pr = comanda_a_centre_logistic(productes_centre5, 8018,ciutat,priority, creditcard, client,comanda,gm,gg)
         print(pr)
 
 
@@ -364,7 +364,7 @@ def agentbehavior1(cola, comanda_id, llista_productes, ciutat, priority, creditc
     productes_centre5.clear()
 
 
-def comanda_a_centre_logistic(productes, portcentrelogistic,ciutat,priority, creditcard, client,comanda,gm):
+def comanda_a_centre_logistic(productes, portcentrelogistic,ciutat,priority, creditcard, client,comanda,gm,gg):
     """
     Envia una comanda a un centre logístico.
     """
