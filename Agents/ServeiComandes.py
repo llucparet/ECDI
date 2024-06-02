@@ -41,6 +41,8 @@ agn = Namespace("http://www.agentes.org#")
 mss_cnt = 0
 endpoint_url = "http://localhost:3030/ONTO/query"
 
+fuseki_url = 'http://localhost:3030/ONTO/data'
+
 ServeiComanda = Agent('ServeiComanda',
                       agn.ServeiComanda,
                       'http://%s:%d/comm' % (hostname, port),
@@ -78,7 +80,6 @@ productes_centre2 = []
 productes_centre3 = []
 productes_centre4 = []
 productes_centre5 = []
-
 
 def get_count():
     global mss_cnt
@@ -229,14 +230,14 @@ def communication():
                         preu_total += preu
 
                 ab1 = Process(target=agentbehavior1,
-                              args=(cola1, comanda_id, llista_productes, ciutat, priority, creditcard, dni, gm))
+                              args=(cola1, comanda_id, llista_productes, ciutat, priority, creditcard, dni,comanda, gm))
                 ab1.start()
                 print(preu_total)
                 gr.add((comanda, ONTO.PreuTotal, Literal(preu_total, datatype=XSD.float)))
                 return gr.serialize(format='xml'), 200
 
 
-def agentbehavior1(cola, comanda_id, llista_productes, ciutat, priority, creditcard, dni, gm):
+def agentbehavior1(cola, comanda_id, llista_productes, ciutat, priority, creditcard, dni,comanda, gm):
     preu_total = 0
     products = []
     for producte in llista_productes:
@@ -308,17 +309,26 @@ def agentbehavior1(cola, comanda_id, llista_productes, ciutat, priority, creditc
 
     data = datetime.now().strftime("%Y-%m-%d")
     registrar_comanda(comanda_id, ciutat, client, data, preu_total, priority, creditcard, products)
-    """
+
     if len(productes_centre1) > 0:
-        comanda_a_centre_logistic(productes_centre1,8014,ciutat,priority, creditcard, client,gm)
+        pr = comanda_a_centre_logistic(productes_centre1,8014,ciutat,priority, creditcard, client,comanda,gm)
+        print(pr)
     if len(productes_centre2) > 0:
-        comanda_a_centre_logistic(productes_centre2, 8015,ciutat,priority, creditcard, client,gm)
+        pr = comanda_a_centre_logistic(productes_centre2, 8015,ciutat,priority, creditcard, client,comanda,gm)
+        print(pr)
+
     if len(productes_centre3) > 0:
-        comanda_a_centre_logistic(productes_centre3, 8016,ciutat,priority, creditcard, client,gm)
+        pr = comanda_a_centre_logistic(productes_centre3, 8016,ciutat,priority, creditcard, client,comanda,gm)
+        print(pr)
+
     if len(productes_centre4) > 0:
-        comanda_a_centre_logistic(productes_centre4, 8017,ciutat,priority, creditcard, client,gm)
+        pr = comanda_a_centre_logistic(productes_centre4, 8017,ciutat,priority, creditcard, client,comanda,gm)
+        print(pr)
+
     if len(productes_centre5) > 0:
-        comanda_a_centre_logistic(productes_centre5, 8018,ciutat,priority, creditcard, client,gm)
+        pr = comanda_a_centre_logistic(productes_centre5, 8018,ciutat,priority, creditcard, client,comanda,gm)
+        print(pr)
+
 
     productes_centre1.clear()
     productes_centre2.clear()
@@ -327,7 +337,7 @@ def agentbehavior1(cola, comanda_id, llista_productes, ciutat, priority, creditc
     productes_centre5.clear()
 
 
-def comanda_a_centre_logistic(productes, portcentrelogistic,ciutat,priority, creditcard, client,gm):
+def comanda_a_centre_logistic(productes, portcentrelogistic,ciutat,priority, creditcard, client,comanda,gm):
     """
     Envia una comanda a un centre logístico.
     """
@@ -335,7 +345,6 @@ def comanda_a_centre_logistic(productes, portcentrelogistic,ciutat,priority, cre
     gr = Graph()
     acction = ONTO['ProcessarEnviament' + str(get_count())]
     gr.add((acction, RDF.type, ONTO.ProcessarEnviament))
-    comanda = ONTO['Comanda' + str(get_count())]
     gr.add((comanda, RDF.type, ONTO.Comanda))
     gr.add((comanda, ONTO.Ciutat, Literal(ciutat)))
     gr.add((comanda, ONTO.Prioritat, Literal(priority)))
@@ -360,8 +369,8 @@ def comanda_a_centre_logistic(productes, portcentrelogistic,ciutat,priority, cre
     for s, p, o in resposta:
         if p == ONTO.Preu:
             preu = o
-    print(preu)
-    return resposta
+    logger.info("Enviament processat")
+    return preu
 
 
 # AgServicioPago ens avisa que ja ha realitzat el cobro i aixi podem realitzar la valoracio

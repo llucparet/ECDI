@@ -132,14 +132,14 @@ def communication():
                         gr.add((lot, ONTO.Prioritat, Literal(o, datatype=XSD.integer)))
                     elif p == ONTO.Pes:
                         pes_total += float(o)
-                    elif p == ONTO.Producte:
-                        productes.append(o)
-                        preu_compra += float(gm.value(subject=o, predicate=ONTO.Preu))
-                        gr.add((o, RDF.type, ONTO.Producte))
-                        gr.add((o, ONTO.Nom, Literal(o, datatype=XSD.string)))
-                        gr.add((lot, ONTO.ProductesLot, o))
-                    elif p == ONTO.Comanda:
-                        gr.add((lot, ONTO.ComandaLot, o))
+                    elif p == RDF.type and o == ONTO.Producte:
+                        productes.append(s)
+                        gr.add((s, RDF.type, ONTO.Producte))
+
+                        gr.add((lot, ONTO.ProductesLot, s))
+                    elif o == ONTO.Comanda:
+                        gr.add((lot, ONTO.ComandaLot, s))
+
                 gr.add((lot, ONTO.Pes, Literal(pes_total, datatype=XSD.float)))
 
                 AgentTransportista = asignar_port_agenttrasportista(port + 5)
@@ -199,9 +199,14 @@ def communication():
                               args=(gr, transportista))
                 ab1.start()
                 ab1.join()
-                gresposta = reclamar_pagament(gr,transportista,nom_transportista, preu_mes_barat+preu_compra, data)
+                preu = reclamar_pagament(gr,transportista,nom_transportista, preu_mes_barat+preu_compra, data,productes)
 
-                return gresposta.serialize(format='xml'), 200
+                gresposta = Graph()
+                accion = ONTO["InformarEnviament_" + str(count)]
+                gresposta.add((accion, RDF.type, ONTO.InformarEnviament))
+                gresposta.add((accion, ONTO.Preu, Literal(preu, datatype=XSD.float)))
+
+                return gresposta.serialize(format="xml"), 200
 
 def enviar_paquet(gr):
     genvio = Graph()
@@ -220,7 +225,7 @@ def enviar_paquet(gr):
 
     return resposta.serialize(format='xml'), 200
 
-def reclamar_pagament(gr,transportista, nom_transportista, preu, data):
+def reclamar_pagament(gr,transportista, nom_transportista, preu, data, productes):
     genvio = Graph()
     for s, p, o in gr:
         if p == ONTO.EnviaCondicions:
@@ -228,6 +233,7 @@ def reclamar_pagament(gr,transportista, nom_transportista, preu, data):
         if p == ONTO.ComandaLot:
             comanda = o
     print(lot)
+    print(comanda)
     count = get_count()
     accion = ONTO["InformarEnviament_" + str(count)]
     genvio.add((accion, RDF.type, ONTO.InformarEnviament))
@@ -237,13 +243,20 @@ def reclamar_pagament(gr,transportista, nom_transportista, preu, data):
     genvio.add((accion, ONTO.Transportista, transportista))
     genvio.add((transportista, ONTO.Nom, nom_transportista))
     genvio.add((accion, ONTO.Preu, Literal(preu, datatype=XSD.float)))
+    print(productes)
+    for p in productes:
+        genvio.add((lot, ONTO.ProducteLot, p))
 
     msg = build_message(genvio, ACL.request, ServeiCentreLogistic.uri,
                         ServeiEntrega.uri, accion, count)
 
     resposta = send_message(msg, ServeiEntrega.address)
 
-    return resposta.serialize(format='xml'), 200
+    for s, p, o in resposta:
+        print(p)
+        if p == ONTO.Preu:
+            preu = o
+    return preu
 
 
 if __name__ == '__main__':

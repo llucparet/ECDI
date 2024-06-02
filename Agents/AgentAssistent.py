@@ -88,11 +88,11 @@ def comunicacion():
     """
     message = request.args['content']
     gm = Graph()
-    gm.parse(data=message)
+    gm.parse(data=message, format='xml')
 
     msgdic = get_message_properties(gm)
 
-    gr = None
+    gr = Graph()
     global mss_cnt
     if msgdic is None:
         mss_cnt+=1
@@ -112,9 +112,9 @@ def comunicacion():
             content = msgdic['content']
             # Averiguamos el tipo de la accion
             accion = gm.value(subject=content, predicate=RDF.type)
+            print(accion)
             if accion == ONTO.InformarEnviament:
                 logger.info("enviament començat")
-                gr = Graph()
                 gr.add((accion, RDF.type, ONTO.InformarEnviament))
                 gr.add((accion, ONTO.DNI, Literal(DNIusuari)))
                 return gr.serialize(format="xml"),200

@@ -101,37 +101,76 @@ def communication():
             count = get_count()
             # Accion de hacer pedido
             if accion == ONTO.InformarEnviament:
+                gr.add((accion, RDF.type, ONTO.InformarEnviament))
                 msg = build_message(gr, ACL.request, ServeiEntrega.uri, AgentAssistent.uri, accion,
                                     get_count())
                 resposta = send_message(msg, AgentAssistent.address)
+                print("Enviament informat")
                 #aqui em retorna el dni de l'usuari i gurdo la comanda
                 llista_porductes = []
-                for s, p, o in resposta:
+                dni = ""
+                comanda = ""
+                data = ""
+                transportista = ""
+                gg = Graph()
+                for s, p, o in gm:
                     if p == ONTO.DNI:
                         dni = o
                     elif p == ONTO.ComandaLot:
                         comanda = o
-                    elif p == ONTO.Producte:
+                    elif p == ONTO.ProducteLot:
                         llista_porductes.append(o)
+                    elif p == ONTO.Data :
+                        data = o
+                    elif p == ONTO.Transportista:
+                        transportista = gm.value(subject=o, predicate=ONTO.Nom)
+                    elif p == ONTO.Preu:
+                        gg.add((accion, ONTO.Preu, o))
+                print("Enviament informat2")
+                print(llista_porductes)
+                print(comanda)
+                print(data)
+                print(transportista)
+                print(dni)
 
                 for producte in llista_porductes:
-
+                    print("Enviament informat3")
                     # Construir les consultes SPARQL
+
+                    sparql_query = f"""
+                                        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+                                        PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
+                                        SELECT ?nom
+                                        WHERE {{
+                                            ?producte rdf:type ont:Producte .
+                                            VALUES ?producte {{ <{producte}> }}
+                                            ?producte ont:Nom ?nom .
+                                          }}
+                                      """
+
+                    print(sparql_query)
+                    # Crear el objeto SPARQLWrapper y establecer la consulta
+                    sparql = SPARQLWrapper(endpoint_url)
+                    sparql.setQuery(sparql_query)
+                    sparql.setReturnFormat(JSON)
+                    results = sparql.query().convert()
+                    print(results["results"]["bindings"])
+                    producte_result= results["results"]["bindings"][0]
+                    nom_producte = producte_result["nom"]["value"]
+                    print(nom_producte)
+
                     delete_query = f"""
-                    PREFIX ONTO: <http://example.org/ontology#>
-                    SELECT ?produte 
+                    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+                    PREFIX onto: <http://example.org/ontology#>
+                    DELETE
                     WHERE {{
-                        <{comanda}> ONTO:ProductesComanda "{producte}" .
-                        <{}>
+                        ?comanda rdf:type ex:Comanda .
+                        ?comanda ex:ProductesComanda ?producteComanda .
+                        VALUES ?comanda {{ <{comanda}> }}
+                        VALUES ?producteComanda {{ <{nom_producte}> }}
                     }}
                     """
 
-                    insert_query = f"""
-                    PREFIX ONTO: <http://example.org/ontology#>
-                    INSERT DATA {{
-                      <{comanda}> ONTO:Data "{nou_valor}" .
-                    }}
-                    """
 
                     # URL del endpoint de Fuseki
                     fuseki_url_update = 'http://localhost:3030/ONTO/update'
@@ -143,7 +182,7 @@ def communication():
                         print("DELETE query successful")
                     else:
                         print(f"DELETE query failed: {response_delete.text}")
-
+                    """
                     # Executar la consulta INSERT
                     response_insert = requests.post(fuseki_url_update, data={'update': insert_query},
                                                     headers={'Content-Type': 'application/x-www-form-urlencoded'})
@@ -151,12 +190,16 @@ def communication():
                         print("INSERT query successful")
                     else:
                         print(f"INSERT query failed: {response_insert.text}")
+                    """
+                return gg.serialize(format="xml"),200
 
+                """
                 acction = ONTO["CobrarProductes_"+ str(count)]
                 gm.add((accion, RDF.type, acction))
                 msg = build_message(gr, ACL.request, ServeiEntrega.uri, AgentPagaments.uri, acction,
                                     get_count())
                 resposta = send_message(msg, AgentPagaments.address)
+                """
                 #aqui guardo que ha fet el pagament
 
 
