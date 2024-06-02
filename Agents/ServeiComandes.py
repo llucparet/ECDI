@@ -123,7 +123,7 @@ def centro_logistico_mas_cercano(ciudades_centros, ciudad_destino):
     return centro_mas_cercano
 
 
-def registrar_comanda(id, ciutat, client, data, preu_total, prioritat, credit_card, products):
+def registrar_comanda(id, ciutat, client, preu_total, prioritat, credit_card, products):
     comanda = URIRef(ONTO[id])
     g_comanda = Graph()
     g_comanda.bind("ns", ONTO)
@@ -138,10 +138,22 @@ def registrar_comanda(id, ciutat, client, data, preu_total, prioritat, credit_ca
     g_comanda.add((comanda, ONTO.TargetaCredit, Literal(credit_card, datatype=XSD.string)))
 
     for producte in products:
-        g_comanda.add((comanda, ONTO.ProductesComanda, URIRef(producte)))
+        producte_comanda_id = f"{id}_ProducteComanda_{producte['ID']}"
+        producte_comanda_uri = URIRef(ONTO[producte_comanda_id])
+
+        g_comanda.add((producte_comanda_uri, RDF.type, ONTO.ProducteComanda))
+        g_comanda.add((producte_comanda_uri, ONTO.Nom, Literal(producte['Nom'], datatype=XSD.string)))
+        g_comanda.add((producte_comanda_uri, ONTO.Preu, Literal(producte['Preu'], datatype=XSD.float)))
+        g_comanda.add((producte_comanda_uri, ONTO.Data,
+                       Literal(producte.get('Data', datetime(1970, 1, 1).date()), datatype=XSD.date)))
+        g_comanda.add((producte_comanda_uri, ONTO.Pagat, Literal(producte.get('Pagat', False), datatype=XSD.boolean)))
+        g_comanda.add((producte_comanda_uri, ONTO.TransportistaProducte,
+                       Literal(producte.get('Transportista', ""), datatype=XSD.string)))
+        g_comanda.add((comanda, ONTO.ProductesComanda, producte_comanda_uri))
 
     # Serializar el grafo a formato RDF/XML
     rdf_xml_data_comanda = g_comanda.serialize(format='xml')
+    fuseki_url = 'http://localhost:3030/ONTO/data'  # Asegúrate de tener la URL correcta
 
     # Cabeceras para la solicitud
     headers = {
@@ -242,8 +254,23 @@ def agentbehavior1(cola, comanda_id, llista_productes, ciutat, priority, creditc
     products = []
     for producte in llista_productes:
         preu = float(gm.value(producte, ONTO.Preu))
+        nom = str(gm.value(producte, ONTO.Nom))
+
+        # Asignar valores por defecto ya que no se envían en gm
+        pagat = False
+        transportista = ""
+        # La fecha de entrega no se debe leer de los datos RDF, la inicializamos a una fecha por defecto
+        data_entrega = datetime(1970, 1, 1).date()
+
         preu_total += preu
-        products.append(producte)
+        products.append({
+            'ID': producte.split("/")[-1],
+            'Nom': nom,
+            'Preu': preu,
+            'DataEntrega': data_entrega,
+            'Pagat': pagat,
+            'Transportista': transportista
+        })
 
         value = "".join(f"<{producte}> ")
         # Consulta SPARQL
