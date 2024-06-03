@@ -1,2 +1,2 @@
-# ECDI
-Simulaico Amazon com a sistema distribuit
+# Pràctica ECSDI
+Simulació Amazon com a sistema distribuit
