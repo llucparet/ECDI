@@ -18,7 +18,7 @@ logger = config_logger(level=1)
 
 # Configuration stuff
 hostname = "localhost"
-port = 8004
+port = 8080
 
 agn = Namespace("http://www.agentes.org#")
 
@@ -89,7 +89,7 @@ def get_products_by_company():
                  ns:Pes ?pes ;
                  ns:Categoria ?categoria ;
                  ns:Valoracio ?valoracio .
-        FILTER (STRLEN(STR(?empresa)) > 0)
+        FILTER (STR(?empresa) != "ECDI")
     }
     """
     response = requests.post(fuseki_url, data={'query': query}, headers={'Accept': 'application/sparql-results+json'})
@@ -135,7 +135,7 @@ def add_product():
             else:
                 return render_template('nou_producte.html', start=False)
         if request.form['submit'] == 'Tornar':
-            return render_template('nou_producte.html', start=True, vendors=vendors)
+            return render_template('home_venedor_extern.html')
 
 
 @app.route("/list_products", methods=['GET'])
@@ -143,6 +143,42 @@ def list_products():
     products = get_products_by_company()
     return render_template('list_products_venedor_extern.html', products=products)
 
+@app.route("/delete_product", methods=['POST'])
+def delete_product():
+    product_id = request.form['product_id']
+    error = delete_product_by_id(product_id)
+    if error:
+        print(f"Error deleting product: {error}")
+    return list_products()
+
+
+def delete_product_by_id(product_id):
+    global mss_cnt
+    g = Graph()
+    cnt = get_count()
+
+    if not product_id:
+        return "El ID del producto no puede estar vacío."
+
+    print(f"Deleting product with ID: {product_id}")  # Registro de depuración
+
+    action = ONTO['EliminarProducteExtern_' + str(cnt)]
+    g.add((action, RDF.type, ONTO.EliminarProducteExtern))
+    g.add((action, ONTO.ID, Literal(product_id)))
+
+    msg = build_message(g, ACL.request, AgentVenedorExtern.uri, ServeiCataleg.uri, action, get_count())
+    response_graph = send_message(msg, ServeiCataleg.address)
+
+    if response_graph is None:
+        return "Error enviando el mensaje al servicio de catálogo."
+
+    # Ya tenemos el grafo de respuesta
+    if (None, RDF.type, ACL.inform) in response_graph:
+        print('Producto eliminado exitosamente')
+        return None
+    else:
+        print('Error en la respuesta del servicio de catálogo')
+        return "Error en la respuesta del servicio de catálogo."
 
 def add_new_product(nomEmpresa, nomProducte, preu, marca, categoria, pes):
     global mss_cnt

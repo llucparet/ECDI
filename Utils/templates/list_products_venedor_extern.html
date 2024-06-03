@@ -24,6 +24,7 @@
                 <th>Peso</th>
                 <th>Categoría</th>
                 <th>Valoración</th>
+                <th>Acciones</th>
             </tr>
             {% for product in products %}
             <tr>
@@ -35,6 +36,12 @@
                 <td>{{ product.weight }}</td>
                 <td>{{ product.category }}</td>
                 <td>{{ product.rating }}</td>
+                <td>
+                    <form method="post" action="/delete_product">
+                        <input type="hidden" name="product_id" value="{{ product.id }}">
+                        <input type="submit" value="Borrar">
+                    </form>
+                </td>
             </tr>
             {% endfor %}
         </table>

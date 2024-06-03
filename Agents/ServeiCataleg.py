@@ -1,5 +1,7 @@
 import socket
 from multiprocessing import Queue, Process
+
+from SPARQLWrapper import SPARQLWrapper, POST, JSON, URLENCODED
 from flask import Flask, request
 from rdflib import Namespace, Graph, RDF, Literal
 import requests
@@ -44,7 +46,7 @@ app = Flask(__name__)
 
 # Fuseki endpoint
 fuseki_url = 'http://localhost:3030/ONTO/data'
-
+update_endpoint_url = 'http://localhost:3030/ONTO/update'
 
 def get_count():
     global mss_cnt
@@ -77,6 +79,30 @@ def generate_unique_product_id(existing_ids):
         new_id = f'P{random.randint(1000, 9999)}'
         if new_id not in existing_ids:
             return new_id
+
+def delete_product_from_fuseki(product_id):
+    query = f"""
+    PREFIX ns: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
+    DELETE WHERE {{
+        ?product ns:ID "{product_id}" ;
+                 ?p ?o .
+    }}
+    """
+    print(f"SPARQL Update Query: {query}")  # Registro de depuración
+
+    sparql = SPARQLWrapper(update_endpoint_url)
+    sparql.setMethod(POST)
+    sparql.setQuery(query)
+    sparql.setRequestMethod(URLENCODED)
+    sparql.setReturnFormat(JSON)
+
+    try:
+        response = sparql.query()
+        print("Product successfully deleted from Fuseki")
+        return True
+    except Exception as e:
+        print(f"Error in SPARQL update: {e}")
+        return False
 
 
 @app.route("/comm", methods=['GET', 'POST'])
@@ -151,6 +177,18 @@ def communication():
 
                 gr = Graph()
                 return gr.serialize(format='xml'), 200
+
+            elif accion == ONTO.EliminarProducteExtern:
+                product_id = gm.value(subject=content, predicate=ONTO.ID)
+                print(f"Received request to delete product with ID: {product_id}")  # Registro de depuración
+                if product_id and delete_product_from_fuseki(str(product_id)):
+                    print('Producto eliminado exitosamente de Fuseki')
+                    gr = build_message(Graph(), ACL.inform, sender=ServeiCataleg.uri, msgcnt=get_count())
+                else:
+                    print('Error al eliminar el producto de Fuseki')
+                    gr = build_message(Graph(), ACL.failure, sender=ServeiCataleg.uri, msgcnt=get_count())
+                return gr.serialize(format='xml'), 200
+
             else:
                 # No entendemos la acción
                 gr = build_message(Graph(),
@@ -160,7 +198,6 @@ def communication():
                 return gr.serialize(format='xml'), 200
 
     return "Aquest agent s'encarregarà d'afegir productes."
-
 
 def agentbehavior1(queue):
     """
