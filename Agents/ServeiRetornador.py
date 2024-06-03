@@ -21,10 +21,8 @@ agn = Namespace("http://www.agentes.org#")
 # Contador de mensajes
 mss_cnt = 0
 
-ServeiEntrega = Agent('ServeiEntrega',
-                      agn.ServeiEntrega,
-                      'http://%s:%d/comm' % (hostname, port),
-                      'http://%s:%d/Stop' % (hostname, port))
+ServeiEntrega = Agent('ServeiEntrega', agn.ServeiEntrega, f'http://{hostname}:8000/comm',
+                         f'http://{hostname}:8000/Stop')
 
 AgentAssistent = Agent('AgentAssistent',
                        agn.AgentAssistent,
@@ -129,6 +127,20 @@ def communication():
 
                     gr.add((content, ONTO.Transportista, Literal(transportista)))
                     gr.add((content, ONTO.DataRecogida, Literal(fecha_recogida_str, datatype=XSD.date)))
+
+                    # Informar al ServeiEntrega para realizar el pago
+                    g_pago = Graph()
+                    accion_pago = ONTO["PagarUsuari_" + str(get_count())]
+                    g_pago.add((accion_pago, RDF.type, ONTO.PagarUsuari))
+                    g_pago.add((accion_pago, ONTO.Desti, client))
+                    g_pago.add((accion_pago, ONTO.Import, import_producte))
+                    g_pago.add((accion_pago, ONTO.ProducteComanda, producte_comanda))
+
+                    print(f"Sending payment message to {ServeiEntrega.uri}")
+                    msg_pago = build_message(g_pago, ACL.request, ServeiRetornador.uri, ServeiEntrega.uri, accion_pago,
+                                             get_count())
+                    send_message(msg_pago, ServeiEntrega.address)
+
                 else:
                     resolucio = "Rebutjat"
                     print("Devolución no válida")
