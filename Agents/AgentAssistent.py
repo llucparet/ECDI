@@ -50,20 +50,18 @@ def get_count():
     return mss_cnt
 
 productes_enviats = []
+productes_externs = []
 
 @app.route("/", methods=['GET', 'POST'])
 def initialize():
-    global DNIusuari, productos_recomendados, products_list, completo, info_bill, productes_enviats
+    global DNIusuari, productos_recomendados, products_list, completo, info_bill, productes_enviats, productes_externs
     if request.method == 'GET':
         if DNIusuari:
-            if productes_enviats:
-                aux = productes_enviats
-                productes_enviats = []
-                return render_template('home.html', products=aux, usuario=DNIusuari, recomendacion=False,notificacio=True)
-            elif not productos_recomendados:
-                return render_template('home.html', products=None, usuario=DNIusuari, recomendacion=False,notificacio=False)
-            else:
-                return render_template('home.html', products=productos_recomendados, usuario=DNIusuari, recomendacion=True,notificacio=False)
+            aux = productes_enviats
+            productes_enviats = []
+            aux2 = productes_externs
+            productes_externs = []
+            return render_template('home.html', products_recomenats=productos_recomendados,products_enviats=aux,products_externs=aux2, usuario=DNIusuari)
         else:
             return render_template('usuari.html')
     elif request.method == 'POST':
@@ -95,6 +93,7 @@ def comunicacion():
     """
     Entrypoint de comunicacion
     """
+    print("comunicacion")
     message = request.args['content']
     gm = Graph()
     gm.parse(data=message, format='xml')
@@ -131,43 +130,18 @@ def comunicacion():
                 print(productes_enviats)
                 gr.add((accion, RDF.type, ONTO.InformarEnviament))
                 gr.add((accion, ONTO.DNI, Literal(DNIusuari)))
-                return gr.serialize(format="xml"),200
-            """
-            if accion == ONTO.ProcesarEnvio:
-                global grafo_respuesta
-                grafo_respuesta = gm
-                global completo
-                completo = True
-                gr = Graph()
-                return gr.serialize(format="xml"),200
+                return gr.serialize(format="xml"), 200
+            elif accion == ONTO.CobrarProductesVenedorExtern:
+                logger.info("productes venedor extern")
+                for s,p,o in gm:
+                    if p == ONTO.Nom:
+                        productes_externs.append(str(o))
+                print("productes externs")
+                print(productes_externs)
+                gr.add((accion, RDF.type, ONTO.CobrarProductesVenedorExtern))
+                gr.add((accion, ONTO.DNI, Literal(DNIusuari)))
+                return gr.serialize(format="xml"), 200
 
-            # Accion de valorar
-            elif accion == ONTO.ValorarProducto:
-                gr =Graph()
-                return gr.serialize(format="xml"),200
-
-            elif accion == ONTO.ConfirmarValoracion:
-                global productos_valorar_no_permitido
-                for s,p,o in gm:
-                    if p == ONTO.Nombre:
-                        if str(o) in productos_valorar_no_permitido:
-                            productos_valorar_no_permitido.remove(str(o))
-                gr = Graph()
-                return gr.serialize(format="xml"),200
-            elif accion == ONTO.RecomendarProducto:
-                subjects_productos_usuari = []
-                for s,p,o in gm:
-                    if p == ONTO.DNI and str(o) == nombreusuario:
-                        subjects_productos_usuari.append(str(s))
-                global productos_recomendados
-                productos_recomendados = []
-                for s,p,o in gm:
-                    if str(s) in subjects_productos_usuari:
-                        if p == ONTO.Nombre:
-                            productos_recomendados.append(str(o))
-                gr = Graph()
-                return gr.serialize(format="xml"),200
-"""
 @app.route("/hacer_pedido", methods=['GET', 'POST'])
 def hacer_pedido():
     global products_list, completo, info_bill

@@ -27,7 +27,7 @@ port = 8012
 agn = Namespace("http://www.agentes.org#")
 
 # Contador de mensajes
-mss_cnt = 0
+mss_cnt = 5
 endpoint_url = "http://localhost:3030/ONTO/query"
 
 fuseki_url = 'http://localhost:3030/ONTO/data'
@@ -42,6 +42,7 @@ AgentAssistent = Agent('AgentAssistent',
                        'http://%s:9011/comm' % hostname,
                        'http://%s:9011/Stop' % hostname)
 
+ServeiEntrega = Agent('ServeiEntrega', agn.ServeiEntrega, f'http://{hostname}:8000/comm', f'http://{hostname}:8000/Stop')
 
 def asignar_port_centre_logistic(port):
     portcentrelogistic = port
@@ -272,9 +273,17 @@ def communication():
                         preu = float(gm.value(o, ONTO.Preu))
                         preu_total += preu
 
+                # Creación y inicio del primer proceso
                 ab1 = Process(target=agentbehavior1,
-                              args=(cola1, comanda_id, llista_productes, llista_productes_externs, ciutat, priority, creditcard, dni,comanda, gm,preu_total))
+                              args=(cola1, comanda_id, llista_productes, llista_productes_externs, ciutat, priority,
+                                    creditcard, dni, comanda, gm, preu_total))
                 ab1.start()
+
+                # Creación y inicio del segundo proceso para notificar_productes_venedors_externs
+                notificar_process = Process(target=notificar_produtes_venedors_externs,
+                                            args=(llista_productes_externs, dni))
+                notificar_process.start()
+
                 print(preu_total)
                 gr.add((comanda, ONTO.PreuTotal, Literal(preu_total, datatype=XSD.float)))
                 return gr.serialize(format='xml'), 200
@@ -445,7 +454,23 @@ def comanda_a_centre_logistic(productes, portcentrelogistic,ciutat,priority, cre
 
 
 # AgServicioPago ens avisa que ja ha realitzat el cobro i aixi podem realitzar la valoracio
-
+def notificar_produtes_venedors_externs(llista_produces_externs,dni):
+    print("notificar_produtes_venedors_externs")
+    g = Graph()
+    accio = ONTO['CobrarProductesVenedorExtern' + str(get_count())]
+    g.add((accio, RDF.type, ONTO.CobrarProductesVenedorExtern))
+    for producte in llista_produces_externs:
+        nom = producte['Nom']
+        empresa = producte['Empresa']
+        preu = producte['Preu']
+        g.add((accio, ONTO.Nom, Literal(nom)))
+        g.add((accio, ONTO.Empresa, Literal(empresa)))
+        g.add((accio, ONTO.Preu, Literal(preu)))
+    g.add((accio, ONTO.DNI, Literal(dni)))
+    msg = build_message(g, ACL.request, ServeiComanda.uri, ServeiEntrega.uri, accio, get_count())
+    send_message(msg, ServeiEntrega.address)
+    print("notificar_produtes_venedors_externs_surto")
+    return g.serialize(format='xml'), 200
 
 if __name__ == '__main__':
     # Ponemos en marcha el servidor
