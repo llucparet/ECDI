@@ -9,7 +9,11 @@
     <header>
         <div class="header-icons">
             <a href="/" class="home-icon"><img src="{{ url_for('static', filename='images/home-icon.png') }}" alt="Inicio"></a>
+            {% if products_enviats or products_externs %}
+            <a href="/notificaciones" class="active-notification-icon"><img src="{{ url_for('static', filename='images/active-notification-icon.png') }}" alt="Notificaciones sin leer"></a>
+            {% else %}
             <a href="/notificaciones" class="notification-icon"><img src="{{ url_for('static', filename='images/notification-icon.png') }}" alt="Notificaciones"></a>
+            {% endif %}
         </div>
         <div class="logo">
             <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo ECSDI">
