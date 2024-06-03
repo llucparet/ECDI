@@ -1,9 +1,11 @@
+import sys
+
 from SPARQLWrapper import JSON, SPARQLWrapper
 from flask import Flask, request
-from rdflib import Graph, RDF, Namespace, Literal, XSD, URIRef
+from rdflib import Graph, RDF, Namespace, Literal, URIRef
 from multiprocessing import Queue, Process
 
-from Agents.AgentAssistent import cola1
+from Agents.AgentAssistent import agentbehavior1, cola1
 from Utils.ACL import ACL
 from Utils.ACLMessages import build_message, get_message_properties
 from Utils.Agent import Agent
@@ -11,7 +13,6 @@ from Utils.FlaskServer import shutdown_server
 from Utils.Logger import config_logger
 from Utils.OntoNamespaces import ONTO
 import socket
-import sys
 
 # Configuración de logging
 logger = config_logger(level=1)
@@ -19,143 +20,67 @@ logger = config_logger(level=1)
 # Configuración del agente
 hostname = "localhost"
 port = 8003
-
-# Namespaces para RDF
 agn = Namespace("http://www.agentes.org#")
+ServeiBuscador = Agent('ServeiBuscador', agn.ServeiBuscador, f'http://{hostname}:{port}/comm', f'http://{hostname}:{port}/Stop')
 
-# Datos del Agente
-ServeiBuscador = Agent('ServeiBuscador',
-                       agn.ServeiBuscador,
-                       f'http://{hostname}:{port}/comm',
-                       f'http://{hostname}:{port}/Stop')
-
-# Global triplestore graph
-dsgraph = Graph()
-
-# Flask stuff
 app = Flask(__name__)
-
-# Contador de mensajes
 mss_cnt = 0
-
 
 def get_count():
     global mss_cnt
     mss_cnt += 1
     return mss_cnt
 
-
 @app.route("/comm", methods=['GET', 'POST'])
 def communication():
-    logger.info('Petición de información recibida')
-
-    if request.method == 'GET':
-        message = request.args['content']
-    elif request.method == 'POST':
+    if request.method == 'POST':
         message = request.data
+    elif request.method == 'GET':
+        message = request.args['content']
 
     gm = Graph()
     gm.parse(data=message, format='xml')
     msgdic = get_message_properties(gm)
-    gr = None
 
-    if msgdic is None:
-        # Si no es, respondemos que no hemos entendido el mensaje
-        gr = build_message(Graph(), ACL['not-understood'], sender=ServeiBuscador.uri, msgcnt=get_count())
-    else:
-        # Obtenemos la performativa
-        if msgdic['performative'] != ACL.request:
-            # Si no es un request, respondemos que no hemos entendido el mensaje
-            gr = build_message(Graph(),
-                               ACL['not-understood'],
-                               sender=ServeiBuscador.uri,
-                               msgcnt=get_count())
-        else:
-            # Extraemos el objeto del contenido que ha de ser una acción de la ontología
-            content = msgdic['content']
-            # Averiguamos el tipo de la acción
-            accion = gm.value(subject=content, predicate=RDF.type)
+    if msgdic and msgdic['performative'] == ACL.request:
+        content = msgdic['content']
+        accion = gm.value(subject=content, predicate=RDF.type)
+        if accion == ONTO.BuscarProductes:
+            return handle_search_request(gm, content)
 
-            # Acción de buscar productos
-            if accion == ONTO.BuscarProductes:
-                restriccions = gm.objects(content, ONTO.Restriccions)
-                restriccions_dict = {}
-                for restriccio in restriccions:
-                    if gm.value(subject=restriccio, predicate=RDF.type) == ONTO.RestriccioMarca:
-                        marca = gm.value(subject=restriccio, predicate=ONTO.Marca)
-                        logger.info('BÚSQUEDA->Restriccion de Marca: ' + str(marca))
-                        restriccions_dict['marca'] = str(marca)
-
-                    elif gm.value(subject=restriccio, predicate=RDF.type) == ONTO.RestriccioPreu:
-                        preciomax = gm.value(subject=restriccio, predicate=ONTO.PreuMax)
-                        preciomin = gm.value(subject=restriccio, predicate=ONTO.PreuMin)
-                        if preciomin:
-                            logger.info('BÚSQUEDA->Restriccion de precio mínimo: ' + str(preciomin))
-                            restriccions_dict['preciomin'] = float(preciomin)
-                        if preciomax:
-                            logger.info('BÚSQUEDA->Restriccion de precio máximo: ' + str(preciomax))
-                            restriccions_dict['preciomax'] = float(preciomax)
-
-                    elif gm.value(subject=restriccio, predicate=RDF.type) == ONTO.RestriccioNom:
-                        nombre = gm.value(subject=restriccio, predicate=ONTO.Nom)
-                        logger.info('BÚSQUEDA->Restriccion de Nombre: ' + str(nombre))
-                        restriccions_dict['nombre'] = str(nombre)
-
-                    elif gm.value(subject=restriccio, predicate=RDF.type) == ONTO.RestriccioValoracio:
-                        valoracio = gm.value(subject=restriccio, predicate=ONTO.Valoracio)
-                        logger.info('BÚSQUEDA->Restriccion de Valoración: ' + str(valoracio))
-                        restriccions_dict['valoracio'] = float(valoracio)
-
-                    elif gm.value(subject=restriccio, predicate=RDF.type) == ONTO.RestriccioCategoria:
-                        categoria = gm.value(subject=restriccio, predicate=ONTO.Categoria)
-                        logger.info('BÚSQUEDA->Restriccion de Categoria: ' + str(categoria))
-                        restriccions_dict['categoria'] = str(categoria)
-                        """""
-                    elif gm.value(subject=restriccio, predicate=RDF.type) == ONTO.RestriccioCategoria:
-                        categoria = gm.value(subject=restriccio, predicate=ONTO.Categoria)
-                        logger.info('BÚSQUEDA->Restriccion de Categoria: ' + str(categoria))
-                        restriccions_dict['categoria'] = str(categoria)
-                        """""
-
-                gr = buscar_productos(**restriccions_dict)
-
+    # Default response if message is not understood or there is no action to perform
+    gr = build_message(Graph(), ACL['not-understood'], sender=ServeiBuscador.uri, msgcnt=get_count())
     return gr.serialize(format='xml'), 200
 
+def handle_search_request(gm, content):
+    filters = {p: gm.value(subject=restriccio, predicate=ONTO[p])
+               for restriccio in gm.objects(content, ONTO.Restriccions)
+               for p in ['Marca', 'PreuMax', 'PreuMin', 'Nom', 'Valoracio', 'Categoria']
+               if gm.value(subject=restriccio, predicate=RDF.type) == ONTO['Restriccio' + p]}
 
-@app.route("/Stop")
-def stop():
-    """
-    Entrypoint que para el agente
+    logger.info(f'Applying filters: {filters}')
+    gr = buscar_productos(**filters)
+    return gr.serialize(format='xml'), 200
 
-    :return:
-    """
-    tidyup()
-    shutdown_server()
-    return "Parando Servidor"
-
-
-def tidyup():
-    """
-    Acciones previas a parar el agente
-
-    """
-    pass
-
-
-def agentbehavior1(cola):
-    """
-    Un comportamiento del agente
-
-    :return:
-    """
-    pass
-
-
-def buscar_productos(valoracio=0.0, marca=None, preciomin=0.0, preciomax=sys.float_info.max, nombre=None, categoria=None):
+def buscar_productos(**filters):
     endpoint_url = "http://localhost:3030/ONTO/query"
     graph = Graph()
+    conditions = []
 
-    # Construcción de la consulta SPARQL
+    if 'Marca' in filters:
+        conditions.append(f"?marca = \"{filters['Marca']}\"")
+    if 'Nom' in filters:
+        conditions.append(f"regex(?nom, \"{filters['Nom']}\", \"i\")")
+    if 'Categoria' in filters:
+        conditions.append(f"regex(?categoria, \"{filters['Categoria']}\", \"i\")")
+    if 'Valoracio' in filters:
+        conditions.append(f"?valoracio >= {float(filters['Valoracio'])}")
+    if 'PreuMin' in filters or 'PreuMax' in filters:
+        preuMin = float(filters.get('PreuMin', 0))
+        preuMax = float(filters.get('PreuMax', sys.float_info.max))
+        conditions.append(f"?preu >= {preuMin} && ?preu <= {preuMax}")
+
+    where_clause = " && ".join(conditions)
     query = f"""
         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         PREFIX ex: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
@@ -169,48 +94,34 @@ def buscar_productos(valoracio=0.0, marca=None, preciomin=0.0, preciomax=sys.flo
             OPTIONAL {{ ?producte ex:Marca ?marca . }}
             OPTIONAL {{ ?producte ex:Valoracio ?valoracio . }}
             OPTIONAL {{ ?producte ex:Categoria ?categoria . }}
-            FILTER (?preu >= {float(preciomin)} && ?preu <= {float(preciomax)})
+            FILTER ({where_clause})
+        }}
     """
-    if marca:
-        query += f"    FILTER (?marca = \"{marca}\")\n"
-    if nombre:
-        query += f"    FILTER (regex(?nom, \"{nombre}\", \"i\"))\n"
-    if valoracio > 0.0:
-        query += f"    FILTER (?valoracio >= {float(valoracio)})\n"
-    if categoria:
-        query += f"    FILTER (regex(?categoria, \"{categoria}\", \"i\"))\n"
-
-    query += "}"
 
     sparql = SPARQLWrapper(endpoint_url)
     sparql.setQuery(query)
     sparql.setReturnFormat(JSON)
-
     try:
         results = sparql.query().convert()
         for result in results["results"]["bindings"]:
             producte = URIRef(result["producte"]["value"])
             graph.add((producte, RDF.type, ONTO.Producte))
-            if "nom" in result:
-                graph.add((producte, ONTO.Nom, Literal(result["nom"]["value"])))
-            if "pes" in result:
-                graph.add((producte, ONTO.Pes, Literal(result["pes"]["value"])))
-            if "preu" in result:
-                graph.add((producte, ONTO.Preu, Literal(result["preu"]["value"])))
-            if "marca" in result:
-                graph.add((producte, ONTO.Marca, Literal(result["marca"]["value"])))
-            if "valoracio" in result:
-                graph.add((producte, ONTO.Valoracio, Literal(result["valoracio"]["value"])))
-            if "categoria" in result:
-                graph.add((producte, ONTO.Categoria, Literal(result["categoria"]["value"])))
+            for attr in ['nom', 'pes', 'preu', 'marca', 'valoracio', 'categoria']:
+                if attr in result:
+                    graph.add((producte, ONTO[attr.capitalize()], Literal(result[attr]["value"])))
         return graph
     except Exception as e:
-        logger.error(f"Error al ejecutar la consulta SPARQL: {e}")
-        return Graph()  # Devolver un gráfico vacío en caso de error
+        logger.error(f"Error executing SPARQL query: {e}")
+        return Graph()  # Return an empty graph on error
 
+@app.route("/Stop")
+def stop():
+    tidyup()
+    shutdown_server()
+    return "Stopping server"
 
-
-
+def tidyup():
+    pass
 
 if __name__ == '__main__':
     # Ponemos en marcha los behaviors
