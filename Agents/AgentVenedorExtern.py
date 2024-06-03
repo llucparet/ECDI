@@ -46,7 +46,7 @@ fuseki_url = 'http://localhost:3030/ONTO/query'
 app = Flask(__name__)
 
 template_dir = os.path.abspath('../Utils/templates')
-app = Flask(__name__, template_folder=template_dir)
+app = Flask(__name__, template_folder=template_dir, static_folder='../static')
 
 
 def get_count():
