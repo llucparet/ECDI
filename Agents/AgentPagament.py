@@ -135,10 +135,32 @@ def communication():
                     print(f"Error en executar la consulta SPARQL: {response.status_code}")
                     print(response.text)
                 return gr.serialize(format='xml'), 200
+
             elif accion == ONTO.PagarVenedorExtern:
                 logger.info ("Pagament a venedor extern")
                 g = Graph()
                 return g.serialize(format='xml'), 200
+
+            elif accion == ONTO.PagarUsuari:
+                print("Pagar Usuari")
+
+                client = ""
+                import_producte = ""
+                producte_comanda = ""
+
+                for s, p, o in gm:
+                    if p == ONTO.Desti:
+                        client = o
+                    elif p == ONTO.Import:
+                        import_producte = o
+                    elif p == ONTO.ProducteComanda:
+                        producte_comanda = o
+
+                print(f"Client: {client}, Import: {import_producte}, ProducteComanda: {producte_comanda}")
+                logger.info(f"Pagament a usuari: {client}, import: {import_producte}, producte: {producte_comanda}")
+
+                return gr.serialize(format='xml'), 200
+
 
 if __name__ == '__main__':
     # Ponemos en marcha el servidor

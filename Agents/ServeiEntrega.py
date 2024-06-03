@@ -1,5 +1,4 @@
 from multiprocessing import Queue, Process
-
 from SPARQLWrapper import RDF, SPARQLWrapper, JSON
 from flask import Flask, request
 from pyparsing import Literal
@@ -9,11 +8,7 @@ from Utils.Agent import Agent
 from Utils.Logger import config_logger
 from Utils.OntoNamespaces import ONTO
 from Utils.ACL import ACL
-from geopy.geocoders import Nominatim
-from geopy.distance import great_circle, geodesic
-
-
-from Utils.ACLMessages import build_message, send_message, get_message_properties
+import requests
 
 logger = config_logger(level=1)
 
@@ -52,8 +47,35 @@ def get_count():
     mss_cnt += 1
     return mss_cnt
 
+def registrar_transaccio(pagador, cobrador, producte, preu):
+    g = Graph()
+    accio = ONTO['Transaccio_' + str(get_count())]
+    g.add((accio, RDF.type, ONTO.Transaccio))
+    g.add((accio, ONTO.Pagador, Literal(pagador)))
+    g.add((accio, ONTO.Cobrador, Literal(cobrador)))
+    g.add((accio, ONTO.Producte, Literal(producte)))
+    g.add((accio, ONTO.Preu, Literal(preu)))
 
-@app.route("/comm")
+    # Serializar el grafo a formato RDF/XML
+    rdf_xml_data_comanda = g.serialize(format='xml')
+    fuseki_url = 'http://localhost:3030/ONTO/data'  # Asegúrate de tener la URL correcta
+
+    # Cabeceras para la solicitud
+    headers = {
+        'Content-Type': 'application/rdf+xml'
+    }
+
+    # Enviamos los datos a Fuseki
+    response = requests.post(fuseki_url, data=rdf_xml_data_comanda, headers=headers)
+
+    # Verificamos la respuesta
+    if response.status_code == 200:
+        print('transaccio registrada exitosamente en Fuseki')
+    else:
+        print(f'Error al registrar la transaccio en Fuseki: {response.status_code} - {response.text}')
+
+
+@app.route("/comm", methods=['GET', 'POST'])
 def communication():
     """
     Communication Entrypoint
@@ -89,8 +111,46 @@ def communication():
             accion = gm.value(subject=content, predicate=RDF.type)
             print(accion)
             count = get_count()
+
+            # Acción de pagar usuario
+            if accion == ONTO.PagarUsuari:
+                print("Pagar Usuari")
+
+                client = ""
+                import_producte = ""
+                producte_comanda = ""
+
+                for s, p, o in gm:
+                    if p == ONTO.Desti:
+                        client = o
+                    elif p == ONTO.Import:
+                        import_producte = o
+                    elif p == ONTO.ProducteComanda:
+                        producte_comanda = o
+
+                print(f"Client: {client}, Import: {import_producte}, ProducteComanda: {producte_comanda}")
+
+                # Registrar transacción de devolución
+                registrar_transaccio("ECDI", client, f"Devolució producte {producte_comanda}", import_producte)
+
+                # Enviar la acción PagarUsuari al AgentPagament
+                g_pago = Graph()
+                accion_pago = ONTO["PagarUsuari_" + str(get_count())]
+                g_pago.add((accion_pago, RDF.type, ONTO.PagarUsuari))
+                g_pago.add((accion_pago, ONTO.Desti, client))
+                g_pago.add((accion_pago, ONTO.Import, import_producte))
+                g_pago.add((accion_pago, ONTO.ProducteComanda, producte_comanda))
+
+                msg_pago = build_message(g_pago, ACL.request, ServeiEntrega.uri, AgentPagament.uri, accion_pago,
+                                         get_count())
+                send_message(msg_pago, AgentPagament.address)
+
+                # Responder con éxito
+                gr = build_message(gr, ACL.inform, sender=ServeiEntrega.uri, msgcnt=get_count())
+                return gr.serialize(format='xml'), 200
+
             # Accion de hacer pedido
-            if accion == ONTO.InformarEnviament:
+            elif accion == ONTO.InformarEnviament:
 
                 print("Enviament informat")
                 #aqui em retorna el dni de l'usuari i gurdo la comanda
@@ -264,33 +324,6 @@ def communication():
                 resposta = send_message(msg, AgentAssistent.address)
 
                 return resposta.serialize(format="xml"), 200
-
-def registrar_transaccio(pagador,cobrador,producte,preu):
-    g = Graph()
-    accio = ONTO['Transaccio_' + str(get_count())]
-    g.add((accio, RDF.type, ONTO.Transaccio))
-    g.add((accio, ONTO.Pagador, Literal(pagador)))
-    g.add((accio, ONTO.Cobrador, Literal(cobrador)))
-    g.add((accio, ONTO.Producte, Literal(producte)))
-    g.add((accio, ONTO.Preu, Literal(preu)))
-
-    # Serializar el grafo a formato RDF/XML
-    rdf_xml_data_comanda = g.serialize(format='xml')
-    fuseki_url = 'http://localhost:3030/ONTO/data'  # Asegúrate de tener la URL correcta
-
-    # Cabeceras para la solicitud
-    headers = {
-        'Content-Type': 'application/rdf+xml'
-    }
-
-    # Enviamos los datos a Fuseki
-    response = requests.post(fuseki_url, data=rdf_xml_data_comanda, headers=headers)
-
-    # Verificamos la respuesta
-    if response.status_code == 200:
-        print('transaccio registrada exitosamente en Fuseki')
-    else:
-        print(f'Error al registrar la transaccio en Fuseki: {response.status_code} - {response.text}')
 
 
 if __name__ == '__main__':

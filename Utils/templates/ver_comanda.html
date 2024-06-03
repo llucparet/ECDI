@@ -59,7 +59,9 @@
                         {% endif %}
                     </td>
                     <td>
-                        {% if product.Pagado == 'false' %}
+                        {% if product.Empresa != 'ECDI' %}
+                            Devolució gestionada per {{ product.Empresa }}
+                        {% elif product.Pagado == 'false' %}
                             No
                         {% elif product.Retornat == 'Retornat' %}
                             Acceptat
