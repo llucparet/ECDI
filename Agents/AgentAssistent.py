@@ -4,7 +4,7 @@ import flask
 import requests
 from SPARQLWrapper import SPARQLWrapper, JSON
 from flask import Flask, request, render_template, redirect, url_for
-from rdflib import Namespace, Graph, RDF, Literal, URIRef
+from rdflib import Namespace, Graph, RDF, Literal, URIRef, XSD
 
 from Utils.ACL import ACL
 from Utils.ACLMessages import build_message, get_message_properties, send_message
@@ -13,7 +13,6 @@ from Utils.Logger import config_logger
 from Utils.OntoNamespaces import ONTO
 import socket
 from multiprocessing import Queue, Process
-
 
 # Configuración de logging
 logger = config_logger(level=1)
@@ -29,10 +28,16 @@ agn = Namespace("http://www.agentes.org#")
 app = Flask(__name__, template_folder='../Utils/templates')
 
 # Agentes del sistema
-AgentAssistent = Agent('AgentAssistent', agn.AgentAssistent, f'http://{hostname}:{port}/comm', f'http://{hostname}:{port}/Stop')
-ServeiBuscador = Agent('ServeiBuscador', agn.ServeiBuscador, f'http://{hostname}:8003/comm', f'http://{hostname}:8003/Stop')
-ServeiComandes = Agent('ServeiComandes', agn.ServeiComandes, f'http://{hostname}:8012/comm', f'http://{hostname}:9012/Stop')
-AgentPagament = Agent('AgentPagament', agn.AgentPagament, f'http://{hostname}:8007/comm', f'http://{hostname}:8007/Stop')
+AgentAssistent = Agent('AgentAssistent', agn.AgentAssistent, f'http://{hostname}:{port}/comm',
+                       f'http://{hostname}:{port}/Stop')
+ServeiBuscador = Agent('ServeiBuscador', agn.ServeiBuscador, f'http://{hostname}:8003/comm',
+                       f'http://{hostname}:8003/Stop')
+ServeiComandes = Agent('ServeiComandes', agn.ServeiComandes, f'http://{hostname}:8012/comm',
+                       f'http://{hostname}:9012/Stop')
+AgentPagament = Agent('AgentPagament', agn.AgentPagament, f'http://{hostname}:8007/comm',
+                      f'http://{hostname}:8007/Stop')
+ServeiRetornador = Agent('ServeiRetornador', agn.ServeiRetornador, f'http://{hostname}:8030/comm',
+                         f'http://{hostname}:8030/Stop')
 
 cola1 = Queue()
 
@@ -41,14 +46,18 @@ mss_cnt = 0
 productos_recomendados = []
 products_list = []
 DNIusuari = ""
-usuari= ""
+usuari = ""
 completo = False
+
+
 def get_count():
     global mss_cnt
     mss_cnt += 1
     return mss_cnt
 
+
 productes_enviats = []
+
 
 @app.route("/", methods=['GET', 'POST'])
 def initialize():
@@ -58,11 +67,14 @@ def initialize():
             if productes_enviats:
                 aux = productes_enviats
                 productes_enviats = []
-                return render_template('home.html', products=aux, usuario=DNIusuari, recomendacion=False,notificacio=True)
+                return render_template('home.html', products=aux, usuario=DNIusuari, recomendacion=False,
+                                       notificacio=True)
             elif not productos_recomendados:
-                return render_template('home.html', products=None, usuario=DNIusuari, recomendacion=False,notificacio=False)
+                return render_template('home.html', products=None, usuario=DNIusuari, recomendacion=False,
+                                       notificacio=False)
             else:
-                return render_template('home.html', products=productos_recomendados, usuario=DNIusuari, recomendacion=True,notificacio=False)
+                return render_template('home.html', products=productos_recomendados, usuario=DNIusuari,
+                                       recomendacion=True, notificacio=False)
         else:
             return render_template('usuari.html')
     elif request.method == 'POST':
@@ -84,10 +96,11 @@ def initialize():
 
             # Enviamos los datos a Fuseki
             response = requests.post(fuseki_url, data=rdf_xml_data, headers=headers)
-            print (response)
+            print(response)
             return render_template('home.html', products=None, usuario=DNIusuari)
         elif 'submit' in request.form and request.form['submit'] == 'search_products':
             return flask.redirect("http://%s:%d/search_products" % (hostname, port))
+
 
 @app.route("/comm")
 def comunicacion():
@@ -103,7 +116,7 @@ def comunicacion():
     gr = Graph()
     global mss_cnt
     if msgdic is None:
-        mss_cnt+=1
+        mss_cnt += 1
         # Si no es, respondemos que no hemos entendido el mensaje
         gr = build_message(Graph(), ACL['not-understood'], sender=AgentAssistent.uri, msgcnt=str(mss_cnt))
     else:
@@ -123,14 +136,14 @@ def comunicacion():
             print(accion)
             if accion == ONTO.InformarEnviament:
                 logger.info("enviament començat")
-                for s,p,o in gm:
+                for s, p, o in gm:
                     if p == ONTO.Nom:
                         productes_enviats.append(str(o))
 
                 print(productes_enviats)
                 gr.add((accion, RDF.type, ONTO.InformarEnviament))
                 gr.add((accion, ONTO.DNI, Literal(DNIusuari)))
-                return gr.serialize(format="xml"),200
+                return gr.serialize(format="xml"), 200
             """
             if accion == ONTO.ProcesarEnvio:
                 global grafo_respuesta
@@ -167,6 +180,8 @@ def comunicacion():
                 gr = Graph()
                 return gr.serialize(format="xml"),200
 """
+
+
 @app.route("/hacer_pedido", methods=['GET', 'POST'])
 def hacer_pedido():
     global products_list, completo, info_bill
@@ -211,7 +226,7 @@ def realizar_compra(products_to_buy, city, priority, creditCard):
 
     for p in products_to_buy:
         producte = URIRef(p['Producte'])
-        g.add((producte, RDF.type, ONTO.Producte))# Asumiendo que 'url' es una URI válida para el producto
+        g.add((producte, RDF.type, ONTO.Producte))  # Asumiendo que 'url' es una URI válida para el producto
         g.add((producte, ONTO.Nom, Literal(p['Nom'])))
         g.add((producte, ONTO.Preu, Literal(p['Preu'])))
         g.add((producte, ONTO.Pes, Literal(p['Pes'])))
@@ -252,7 +267,8 @@ def realizar_compra(products_to_buy, city, priority, creditCard):
             sparql.setQuery(sparql_query)
             sparql.setReturnFormat(JSON)
             results = sparql.query().convert()
-            product = {"Nom": results['results']['bindings'][0]['nom']['value'],"Preu": results['results']['bindings'][0]['preu']['value']}
+            product = {"Nom": results['results']['bindings'][0]['nom']['value'],
+                       "Preu": results['results']['bindings'][0]['preu']['value']}
             products.append(product)
     comanda_info['Products'] = products
     return comanda_info
@@ -262,7 +278,8 @@ def realizar_compra(products_to_buy, city, priority, creditCard):
 def search_products():
     global DNIusuari
     if request.method == 'GET':
-        return render_template('busquedaProductes.html', products=None, usuario=DNIusuari, busquedafallida=False, errorvaloracio=False)
+        return render_template('busquedaProductes.html', products=None, usuario=DNIusuari, busquedafallida=False,
+                               errorvaloracio=False)
     else:
         if request.form['submit'] == 'Buscar':
             global products_list
@@ -274,10 +291,12 @@ def search_products():
             Categoria = request.form.get('Categoria')
             products_list = buscar_productos(Nom, PreuMin, PreuMax, Marca, Valoracio, Categoria)
             if len(products_list) == 0:
-                return render_template('busquedaProductes.html', products=None, usuario=DNIusuari, busquedafallida=True, errorvaloracio=False)
+                return render_template('busquedaProductes.html', products=None, usuario=DNIusuari, busquedafallida=True,
+                                       errorvaloracio=False)
             elif Valoracio != "":
                 if str(Valoracio) < str(0) or str(Valoracio) > str(5):
-                    return render_template('busquedaProductes.html', products=None, usuario=DNIusuari, busquedafallida=False, errorvaloracio=True)
+                    return render_template('busquedaProductes.html', products=None, usuario=DNIusuari,
+                                           busquedafallida=False, errorvaloracio=True)
                 else:
                     return flask.redirect("http://%s:%d/hacer_pedido" % (hostname, port))
             else:
@@ -327,7 +346,8 @@ def buscar_productos(Nom=None, PreuMin=0.0, PreuMax=10000.0, Marca=None, Valorac
         g.add((categoryRestriction, ONTO.Categoria, Literal(Categoria)))
         g.add((action, ONTO.Restriccions, URIRef(categoryRestriction)))
 
-    print(f'Buscando productos con las siguientes restricciones: {Nom}, {PreuMin}, {PreuMax}, {Marca}, {Valoracio}, {Categoria}')
+    print(
+        f'Buscando productos con las siguientes restricciones: {Nom}, {PreuMin}, {PreuMax}, {Marca}, {Valoracio}, {Categoria}')
     msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiBuscador.uri, action, mss_cnt)
     print(f'Mensaje construido: {msg}')
     mss_cnt += 1
@@ -375,6 +395,7 @@ def historial_comandes():
     comandas = consultar_comandas(DNIusuari)
     print(comandas)
     return render_template('historial_comandes.html', comandas=comandas)
+
 
 @app.route("/comanda/<comanda_id>", methods=['GET'])
 def ver_comanda(comanda_id):
@@ -482,6 +503,7 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
 
     return comanda
 
+
 @app.route("/pagar/<comanda_id>/<producte_nom>", methods=['GET'])
 def pagar_producte(producte_nom, comanda_id):
     g = Graph()
@@ -494,6 +516,133 @@ def pagar_producte(producte_nom, comanda_id):
 
     gproducts = send_message(msg, AgentPagament.address)
     return redirect(url_for('ver_comanda', comanda_id=comanda_id), code=302)
+
+
+@app.route("/retornar/<comanda_id>/<producte_nom>", methods=['GET', 'POST'])
+def retornar_producte(comanda_id, producte_nom):
+    if request.method == 'POST':
+        motivo = request.form['motivo']
+
+        # Paso 1: Obtener el ID del producto a partir del nombre del producto
+        endpoint_url = "http://localhost:3030/ONTO/query"
+
+        sparql_query_product_id = f"""
+        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
+
+        SELECT ?producte ?id
+        WHERE {{
+            ?producte rdf:type ont:Producte .
+            ?producte ont:Nom "{producte_nom}" .
+            ?producte ont:ID ?id .
+        }}
+        """
+
+        sparql = SPARQLWrapper(endpoint_url)
+        sparql.setQuery(sparql_query_product_id)
+        sparql.setReturnFormat(JSON)
+        results_product_id = sparql.query().convert()
+
+        if not results_product_id["results"]["bindings"]:
+            return f"Error: No se encontró el ID para el producto {producte_nom}.", 404
+
+        product_id = results_product_id["results"]["bindings"][0]["id"]["value"]
+
+        # Construcción de la URI del ProducteComanda
+        producte_comanda_id = f"{comanda_id}_ProducteComanda_{product_id}"
+        producte_comanda_uri = f"http://www.semanticweb.org/nilde/ontologies/2024/4/{producte_comanda_id}"
+
+        # Paso 2: Consulta SPARQL para obtener los detalles del ProducteComanda
+        sparql_query_producte = f"""
+        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
+
+        SELECT ?nom ?preu ?data ?client
+        WHERE {{
+            ?producteComanda rdf:type ont:ProducteComanda .
+            ?producteComanda ont:Nom ?nom .
+            ?producteComanda ont:Preu ?preu .
+            ?producteComanda ont:Data ?data .
+            ?comanda ont:Client ?client .
+            FILTER (?comanda = <http://www.semanticweb.org/nilde/ontologies/2024/4/{comanda_id}>) .
+            FILTER (?producteComanda = <{producte_comanda_uri}>) .
+        }}
+        """
+
+        sparql.setQuery(sparql_query_producte)
+        results_producte = sparql.query().convert()
+
+        if not results_producte["results"]["bindings"]:
+            return f"Error: No se encontraron detalles para el producto {producte_nom} en la comanda {comanda_id}.", 404
+
+        producte_details = results_producte["results"]["bindings"][0]
+        nom_producte = producte_details["nom"]["value"]
+        preu_producte = producte_details["preu"]["value"]
+        data_entrega = producte_details["data"]["value"]
+        client = producte_details["client"]["value"]
+
+        # Crear el grafo para la devolución
+        g = Graph()
+        action = ONTO['RetornarProducte_' + str(get_count())]
+        g.add((action, RDF.type, ONTO.RetornarProducte))
+        g.add((action, ONTO.ProducteComanda, URIRef(producte_comanda_uri)))
+        g.add((action, ONTO.Motiu, Literal(motivo)))
+        g.add((action, ONTO.Data, Literal(data_entrega, datatype=XSD.date)))
+        g.add((action, ONTO.Usuari, URIRef(client)))
+        g.add((action, ONTO.Preu, Literal(preu_producte, datatype=XSD.float)))
+
+        # Imprimir el mensaje RDF
+        print(g.serialize(format='xml'))
+
+        # Enviar mensaje al ServeiRetornador
+        msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiRetornador.uri, action, get_count())
+        response = send_message(msg, ServeiRetornador.address)
+
+        # Procesar la respuesta del ServeiRetornador
+        producte_comanda = None
+        resolucio = None
+        for s, p, o in response:
+            if p == ONTO.Resolucio:
+                resolucio = o
+            if p == ONTO.ProducteComanda:
+                producte_comanda = o
+
+        print(f"Received response - ProducteComanda: {producte_comanda}, Resolucio: {resolucio}")
+
+        # Verificar que ambos valores están definidos
+        if producte_comanda and resolucio:
+            # Actualizar el estado de Retornat en Fuseki
+            update_sparql = f"""
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
+
+            DELETE {{
+                <{producte_comanda}> ont:Retornat ?oldState .
+            }}
+            INSERT {{
+                <{producte_comanda}> ont:Retornat "{resolucio}" .
+            }}
+            WHERE {{
+                <{producte_comanda}> ont:Retornat ?oldState .
+            }}
+            """
+
+            sparql_update = SPARQLWrapper("http://localhost:3030/ONTO/update")
+            sparql_update.setQuery(update_sparql)
+            sparql_update.method = 'POST'
+            sparql_update.setReturnFormat(JSON)
+            sparql_update.query()
+        else:
+            print("Error: No se pudo actualizar el estado de devolución del producto.")
+            if not producte_comanda:
+                print("Error: producte_comanda is None")
+            if not resolucio:
+                print("Error: resolucio is None")
+
+        return redirect(url_for('ver_comanda', comanda_id=comanda_id))
+
+    return render_template('retornar_producte.html', comanda_id=comanda_id, producte_nom=producte_nom)
+
 
 def agentbehavior1(queue):
     """

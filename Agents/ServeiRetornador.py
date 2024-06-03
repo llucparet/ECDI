@@ -5,14 +5,16 @@ from Utils.ACLMessages import build_message, send_message, get_message_propertie
 from Utils.Agent import Agent
 from Utils.FlaskServer import shutdown_server
 from Utils.Logger import config_logger
-from Utils.OntoNamespaces import ONTO, ACL
+from Utils.OntoNamespaces import ONTO
+from Utils.ACL import ACL
+from rdflib.term import URIRef
 import datetime
 
 logger = config_logger(level=1)
 
 # Configuration stuff
 hostname = "localhost"
-port = 8000
+port = 8030
 
 agn = Namespace("http://www.agentes.org#")
 
@@ -33,6 +35,9 @@ AgentPagaments = Agent('AgentPagaments',
                        agn.AgentPagaments,
                        'http://%s:8001/comm' % hostname,
                        'http://%s:8001/Stop' % hostname)
+
+ServeiRetornador = Agent('ServeiRetornador', agn.ServeiRetornador, f'http://{hostname}:8030/comm',
+                         f'http://{hostname}:8030/Stop')
 
 # Global triplestore graph
 dsgraph = Graph()
@@ -60,34 +65,61 @@ def communication():
         message = request.data
 
     gm = Graph()
-    gm.parse(data=message, format='xml')
-    msgdic = get_message_properties(gm)
+    try:
+        gm.parse(data=message, format='xml')
+    except Exception as e:
+        logger.error(f"Error parsing message: {e}")
+        gr = build_message(Graph(), ACL['not-understood'], sender=ServeiRetornador.uri, msgcnt=get_count())
+        return gr.serialize(format="xml"), 500
 
+    msgdic = get_message_properties(gm)
     gr = Graph()
 
     if msgdic is None:
-        gr = build_message(Graph(), ACL['not-understood'], sender=AgentAssistent.uri, msgcnt=get_count())
+        gr = build_message(Graph(), ACL['not-understood'], sender=ServeiRetornador.uri, msgcnt=get_count())
+        print("Message properties not found")
     else:
-        if msgdic['performative'] != ACL.request:
-            gr = build_message(Graph(), ACL['not-understood'], sender=AgentAssistent.uri, msgcnt=get_count())
+        performative_uri = URIRef(msgdic['performative'])
+        expected_uri = ACL.request
+        print(f"Message performative: {performative_uri}")
+        print(f"Expected performative: {expected_uri}")
+
+        if performative_uri != expected_uri:
+            gr = build_message(Graph(), ACL['not-understood'], sender=ServeiRetornador.uri, msgcnt=get_count())
+            print("Message performative not understood")
         else:
             content = msgdic['content']
             accion = gm.value(subject=content, predicate=RDF.type)
 
             if accion == ONTO.RetornarProducte:
                 producte_comanda = gm.value(subject=content, predicate=ONTO.ProducteComanda)
-                data_compra = gm.value(subject=producte_comanda, predicate=ONTO.Data)
+                data_compra = gm.value(subject=content, predicate=ONTO.Data)
                 client = gm.value(subject=content, predicate=ONTO.Usuari)
-                import_producte = gm.value(subject=producte_comanda, predicate=ONTO.Preu)
+                import_producte = gm.value(subject=content, predicate=ONTO.Preu)
+                motiu = gm.value(subject=content, predicate=ONTO.Motiu)
+
+                # Debug prints
+                print(f"ProducteComanda: {producte_comanda}")
+                print(f"DataCompra: {data_compra}")
+                print(f"Client: {client}")
+                print(f"ImportProducte: {import_producte}")
+                print(f"Motiu: {motiu}")
+
+                if not all([producte_comanda, data_compra, client, import_producte, motiu]):
+                    logger.error("Missing data in the message.")
+                    gr = build_message(Graph(), ACL['not-understood'], sender=ServeiRetornador.uri, msgcnt=get_count())
+                    return gr.serialize(format="xml"), 400
 
                 # Verificar si la devolución es válida
                 fecha_compra = datetime.datetime.strptime(str(data_compra), '%Y-%m-%d')
                 dias_pasados = (datetime.datetime.now() - fecha_compra).days
 
-                if dias_pasados <= 14:
+                if dias_pasados <= 14 and len(str(motiu)) > 50:
                     # Devolución válida
                     gr.add((content, RDF.type, ONTO.RetornarProducte))
-                    gr.add((content, ONTO.Resolucio, Literal("Acceptada")))
+                    gr.add((content, ONTO.Resolucio, Literal("Retornat")))
+                    gr.add((content, ONTO.ProducteComanda, producte_comanda))
+                    print("Devolución válida")
 
                     # Informar al ServeiEntrega para realizar el pago
                     g_pago = Graph()
@@ -103,9 +135,14 @@ def communication():
                 else:
                     # Devolución no válida
                     gr.add((content, RDF.type, ONTO.RetornarProducte))
-                    gr.add((content, ONTO.Resolucio, Literal("Rebutjada")))
+                    gr.add((content, ONTO.Resolucio, Literal("Rebutjat")))
+                    gr.add((content, ONTO.ProducteComanda, producte_comanda))
+                    gr.add((content, ONTO.Motiu, motiu))
+                    print("Devolución no válida")
+            else:
+                print("Action not recognized")
 
-                return gr.serialize(format="xml"), 200
+    return gr.serialize(format="xml"), 200
 
 
 @app.route("/Stop")

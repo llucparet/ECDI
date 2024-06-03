@@ -95,28 +95,34 @@
                     <td>{{ product.Nom }}</td>
                     <td>{{ product.Preu }} €</td>
                     <td>{{ product.Data }}</td>
-                    <td>{{ product.Transportista}}</td>
+                    <td>{{ product.Transportista }}</td>
                     <td>
-                        {% if product.Enviado == 'true' and product.Pagado == 'false'%}
-                            <a href="/pagar/{{comanda.ID}}/{{ product.Nom }}" class="button">Pagar</a>
-                        {% elif product.Enviado == 'false' %}
-                            Pendent de Enviament
-                        {% else %}
+                        {% if product.Pagado == 'true' %}
                             Pagat!!
+                        {% elif product.Enviado == 'true' %}
+                            <a href="/pagar/{{ comanda.ID }}/{{ product.Nom }}" class="button">Pagar</a>
+                        {% else %}
+                            Pendent de Enviament
                         {% endif %}
                     </td>
                     <td>
                         {% if product.Pagado == 'true' %}
-                            <a href="/valorar/{{comanda.ID}}/{{ product.Nom }}" class="button">Valorar</a>
+                            <a href="/valorar/{{ comanda.ID }}/{{ product.Nom }}" class="button">Valorar</a>
                         {% else %}
                             Pendent de pagament
                         {% endif %}
                     </td>
                     <td>
-                        {% if product.Retornat == 'true' %}
+                        {% if product.Pagado == 'false' %}
+                            No
+                        {% elif product.Retornat == 'Retornat' %}
                             Sí
+                        {% elif product.Retornat == 'Rebutjat' %}
+                            Rebutjat
+                        {% elif product.Retornat == 'Pendiente' %}
+                            <a href="/retornar/{{ comanda.ID }}/{{ product.Nom }}" class="button">Retornar</a>
                         {% else %}
-                            <a href="#" class="button">Retornar</a>
+                            No
                         {% endif %}
                     </td>
                 </tr>
