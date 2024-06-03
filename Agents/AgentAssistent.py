@@ -67,11 +67,7 @@ def initialize():
     global DNIusuari, productos_recomendados, products_list, completo, info_bill, productes_enviats, productes_externs
     if request.method == 'GET':
         if DNIusuari:
-            aux = productes_enviats
-            productes_enviats = []
-            aux2 = productes_externs
-            productes_externs = []
-            return render_template('home.html', products_recomenats=productos_recomendados,products_enviats=aux,products_externs=aux2, usuario=DNIusuari)
+            return render_template('home.html', products_recomenats=productos_recomendados,products_enviats=productes_enviats,products_externs=productes_externs, usuario=DNIusuari)
         else:
             return render_template('usuari.html')
     elif request.method == 'POST':
@@ -94,7 +90,7 @@ def initialize():
             # Enviamos los datos a Fuseki
             response = requests.post(fuseki_url, data=rdf_xml_data, headers=headers)
             print(response)
-            return render_template('home.html', products=None, usuario=DNIusuari)
+            return render_template('home.html', products=None, usuario=DNIusuari, products_enviats=productes_enviats,products_externs=productes_externs)
         elif 'submit' in request.form and request.form['submit'] == 'search_products':
             return flask.redirect("http://%s:%d/search_products" % (hostname, port))
 
@@ -153,13 +149,23 @@ def comunicacion():
                 gr.add((accion, ONTO.DNI, Literal(DNIusuari)))
                 return gr.serialize(format="xml"), 200
 
+@app.route("/notificaciones", methods=['GET'])
+def notificaciones():
+    global productes_enviats, productes_externs
+    aux = productes_enviats
+    productes_enviats = []
+    aux2 = productes_externs
+    productes_externs = []
+    return render_template('notifications.html', products_enviats=aux, products_externs=aux2)
+
+
 @app.route("/hacer_pedido", methods=['GET', 'POST'])
 def hacer_pedido():
     global products_list, completo, info_bill
     if request.method == 'GET':
         # Mostrar los productos seleccionados para confirmar la compra
         return render_template('novaComanda.html', products=products_list, bill=None, intento=False, completo=False,
-                               campos_error=False)
+                               campos_error=False,products_enviats=productes_enviats,products_externs=productes_externs)
     else:
         if request.form['submit'] == 'Comprar':
             city = request.form['city']
@@ -168,19 +174,19 @@ def hacer_pedido():
             # Validar la entrada del formulario
             if city == "" or priority == "" or creditCard == "" or priority not in ["1", "2", "3"]:
                 return render_template('novaComanda.html', products=products_list, bill=None, intento=False,
-                                       completo=False, campos_error=True)
+                                       completo=False, campos_error=True,products_enviats=productes_enviats,products_externs=productes_externs)
 
             products_to_buy = [products_list[int(p)] for p in request.form.getlist("checkbox") if
                                p.isdigit() and int(p) < len(products_list)]
             if not products_to_buy:
                 # Si no se seleccionaron productos, también muestra un mensaje de error
                 return render_template('novaComanda.html', products=products_list, bill=None, intento=False,
-                                       completo=False, campos_error=True)
+                                       completo=False, campos_error=True,products_enviats=productes_enviats,products_externs=productes_externs)
 
             # Procesa la compra y genera una "factura"
             comanda = realizar_compra(products_to_buy, city, priority, creditCard)
             completo = True  # Indica que la compra se ha completado
-            return render_template('novaComanda.html', products=None, comanda=comanda, intento=False, completo=completo)
+            return render_template('novaComanda.html', products=None, comanda=comanda, intento=False, completo=completo,products_enviats=productes_enviats,products_externs=productes_externs)
         elif request.form['submit'] == "Volver a buscar":
             return redirect(url_for('search_products'))
 
@@ -251,7 +257,7 @@ def search_products():
     global DNIusuari
     if request.method == 'GET':
         return render_template('busquedaProductes.html', products=None, usuario=DNIusuari, busquedafallida=False,
-                               errorvaloracio=False)
+                               errorvaloracio=False,products_enviats=productes_enviats,products_externs=productes_externs)
     else:
         if request.form['submit'] == 'Buscar':
             global products_list
@@ -264,11 +270,11 @@ def search_products():
             products_list = buscar_productos(Nom, PreuMin, PreuMax, Marca, Valoracio, Categoria)
             if len(products_list) == 0:
                 return render_template('busquedaProductes.html', products=None, usuario=DNIusuari, busquedafallida=True,
-                                       errorvaloracio=False)
+                                       errorvaloracio=False,products_enviats=productes_enviats,products_externs=productes_externs)
             elif Valoracio != "":
                 if str(Valoracio) < str(0) or str(Valoracio) > str(5):
                     return render_template('busquedaProductes.html', products=None, usuario=DNIusuari,
-                                           busquedafallida=False, errorvaloracio=True)
+                                           busquedafallida=False, errorvaloracio=True,products_enviats=productes_enviats,products_externs=productes_externs)
                 else:
                     return flask.redirect("http://%s:%d/hacer_pedido" % (hostname, port))
             else:
@@ -368,7 +374,7 @@ def historial_comandes():
     global DNIusuari
     comandas = consultar_comandas(DNIusuari)
     print(comandas)
-    return render_template('historial_comandes.html', comandas=comandas)
+    return render_template('historial_comandes.html', comandas=comandas,products_enviats=productes_enviats,products_externs=productes_externs)
 
 
 @app.route("/comanda/<comanda_id>", methods=['GET'])
@@ -378,7 +384,7 @@ def ver_comanda(comanda_id):
     comanda = consultar_productes_comanda(comanda_id, page, products_per_page)
     total_pages = (comanda['TotalProducts'] // products_per_page) + 1
 
-    return render_template('ver_comanda.html', comanda=comanda, page=page, total_pages=total_pages)
+    return render_template('ver_comanda.html', comanda=comanda, page=page, total_pages=total_pages,products_enviats=productes_enviats,products_externs=productes_externs)
 
 
 def consultar_comandas(dni):
@@ -617,9 +623,9 @@ def retornar_producte(comanda_id, producte_nom):
             resolucio = "Rebutjat"
 
         return render_template('resolucion_retornar.html', comanda_id=comanda_id, producte_nom=producte_nom,
-                               resolucio=resolucio, transportista=transportista, fecha_recogida=fecha_recogida)
+                               resolucio=resolucio, transportista=transportista, fecha_recogida=fecha_recogida,products_enviats=productes_enviats,products_externs=productes_externs)
 
-    return render_template('retornar_producte.html', comanda_id=comanda_id, producte_nom=producte_nom)
+    return render_template('retornar_producte.html', comanda_id=comanda_id, producte_nom=producte_nom,products_enviats=productes_enviats,products_externs=productes_externs)
 
 
 def agentbehavior1(queue):

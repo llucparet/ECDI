@@ -6,6 +6,16 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body class="active">
+    <header>
+        <div class="header-icons">
+            <a href="/" class="home-icon"><img src="{{ url_for('static', filename='images/home-icon.png') }}" alt="Inicio"></a>
+            <a href="/notificaciones" class="notification-icon"><img src="{{ url_for('static', filename='images/notification-icon.png') }}" alt="Notificaciones"></a>
+        </div>
+        <div class="logo">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo ECSDI">
+            <h1>ECSDI</h1>
+        </div>
+    </header>
 <div class="content">
     {% if products %}
     <h1>Confirmar pedido</h1>
@@ -54,7 +64,6 @@
     <p>Prioridad de entrega: {{ comanda.priority }}</p>
     <p>Número de tarjeta: {{ comanda.creditCard }}</p>
     {% endif %}
-    <a href="/">Volver a inicio</a>
 </div>
 </body>
 </html>
