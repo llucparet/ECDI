@@ -26,7 +26,7 @@ port = 9011
 agn = Namespace("http://www.agentes.org#")
 
 # Instancia del Flask app
-app = Flask(__name__, template_folder='../Utils/templates')
+app = Flask(__name__, template_folder='../Utils/templates', static_folder='../static')
 
 # Agentes del sistema
 AgentAssistent = Agent('AgentAssistent', agn.AgentAssistent, f'http://{hostname}:{port}/comm', f'http://{hostname}:{port}/Stop')
