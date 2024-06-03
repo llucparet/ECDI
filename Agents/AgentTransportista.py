@@ -146,25 +146,59 @@ def calcular_data(priority):
     return str(datetime.datetime.now() + datetime.timedelta(days=random.randint(5, 10)))
 
 
-def calcular_distancia( city):
-    geolocator = Nominatim(user_agent='myapplication')
-    location = geolocator.geocode(city)
-    location = (location.latitude, location.longitude)
+def obtener_coordenadas(city, retries=3, delay=2):
+    """
+    Obtiene las coordenadas (latitud y longitud) de una ciudad utilizando el servicio Nominatim de OpenStreetMap.
+    Reintenta la solicitud en caso de fallo hasta 'retries' veces con un retraso de 'delay' segundos entre intentos.
+    """
+    geolocator = Nominatim(user_agent="myapplication")
+    attempt = 0
+
+    while attempt < retries:
+        try:
+            location = geolocator.geocode(city, timeout=10)
+            if location:
+                return (location.latitude, location.longitude)
+            else:
+                return None
+        except Exception as e:
+            print(f"Error obteniendo coordenadas de {city}: {e}")
+            attempt += 1
+            time.sleep(delay)
+
+    return None
+
+
+def calcular_distancia(city):
+    """
+    Calcula la distancia desde una ciudad dada a diferentes ubicaciones predefinidas.
+    """
+    coordenadas_ciudad = obtener_coordenadas(city)
+    time.sleep(1)  # Retraso para cumplir con la restricción de 1 solicitud por segundo
+
+    if not coordenadas_ciudad:
+        print(f"No se pudieron obtener las coordenadas de la ciudad: {city}")
+        return None
+
     location_bany = (42.1167, 2.7667)
     location_bcn = (41.3825, 2.1769)
     location_ta = (41.1189, 1.2445)
     location_val = (39.4699, -0.3763)
     location_zar = (41.6488, -0.8891)
+
     if ciutat == "Banyoles":
-        return great_circle(location_bany, location).km
+        return great_circle(location_bany, coordenadas_ciudad).km
     elif ciutat == "Barcelona":
-        return great_circle(location_bcn, location).km
+        return great_circle(location_bcn, coordenadas_ciudad).km
     elif ciutat == "Tarragona":
-        return great_circle(location_ta, location).km
+        return great_circle(location_ta, coordenadas_ciudad).km
     elif ciutat == "Valencia":
-        return great_circle(location_val, location).km
+        return great_circle(location_val, coordenadas_ciudad).km
     elif ciutat == "Zaragoza":
-        return great_circle(location_zar, location).km
+        return great_circle(location_zar, coordenadas_ciudad).km
+    else:
+        print("Ciudad no reconocida.")
+        return None
 
 @app.route("/comm")
 def communication():
