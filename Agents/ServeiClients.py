@@ -27,10 +27,12 @@ query_endpoint_url = 'http://localhost:3030/ONTO/query'
 
 mss_cnt = 0
 
+
 def get_count():
     global mss_cnt
     mss_cnt += 1
     return mss_cnt
+
 
 @app.route("/comm", methods=['GET'])
 def communication():
@@ -59,6 +61,7 @@ def communication():
 
     return gr.serialize(format='xml')
 
+
 def update_product_rating(nombre_producto, nueva_valoracion, comanda_id):
     sparql = SPARQLWrapper(query_endpoint_url)
     sparql.setQuery(f"""
@@ -86,14 +89,14 @@ def update_product_rating(nombre_producto, nueva_valoracion, comanda_id):
     update_sparql.setQuery(f"""
         PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
         PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-        DELETE WHERE {{
-            ?producto ont:Nom "{nombre_producto}" ;
-                      ont:Valoracio ?valoracion .
-        }};
+        DELETE {{
+            ?producto ont:Valoracio ?old_valoracion .
+        }}
         INSERT {{
             ?producto ont:Valoracio "{nuevo_promedio}"^^xsd:float .
         }} WHERE {{
-            ?producto ont:Nom "{nombre_producto}" .
+            ?producto ont:Nom "{nombre_producto}" ;
+                      ont:Valoracio ?old_valoracion .
         }}
     """)
     update_sparql.query()
@@ -101,26 +104,30 @@ def update_product_rating(nombre_producto, nueva_valoracion, comanda_id):
     # Actualizar ProducteComanda
     update_producte_comanda_rating(comanda_id, nombre_producto, nueva_valoracion)
 
+
+
 def update_producte_comanda_rating(comanda_id, nombre_producto, nueva_valoracion):
     update_sparql = SPARQLWrapper(fuseki_url)
     update_sparql.setMethod('POST')
     update_sparql.setQuery(f"""
         PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
         PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-        DELETE WHERE {{
-            ?producte_comanda ont:Nom "{nombre_producto}" ;
-                              ont:Valoracio ?valoracion .
-        }};
+        DELETE {{
+            ?producte_comanda ont:Valoracio ?old_valoracion .
+        }}
         INSERT {{
             ?producte_comanda ont:Valoracio "{nueva_valoracion}"^^xsd:float .
         }} WHERE {{
             ?producte_comanda ont:Nom "{nombre_producto}" ;
-                               ont:Comanda "{comanda_id}" .
+                               ont:Comanda "{comanda_id}" ;
+                               ont:Valoracio ?old_valoracion .
         }}
     """)
     update_sparql.query()
 
     print(f"Valoración actualizada a {nueva_valoracion} para el producto {nombre_producto} en la comanda {comanda_id}")
+
+
 
 if __name__ == '__main__':
     app.run(host=hostname, port=port)
