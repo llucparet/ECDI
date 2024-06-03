@@ -191,6 +191,7 @@ def communication():
 
             accion = gm.value(subject=content, predicate=RDF.type)
             llista_productes = []
+            llista_productes_externs = []
             print(accion)
             # Accion de hacer pedido
             if accion == ONTO.ComprarProductes:

@@ -33,6 +33,7 @@ AgentAssistent = Agent('AgentAssistent', agn.AgentAssistent, f'http://{hostname}
 ServeiBuscador = Agent('ServeiBuscador', agn.ServeiBuscador, f'http://{hostname}:8003/comm', f'http://{hostname}:8003/Stop')
 ServeiComandes = Agent('ServeiComandes', agn.ServeiComandes, f'http://{hostname}:8012/comm', f'http://{hostname}:9012/Stop')
 AgentPagament = Agent('AgentPagament', agn.AgentPagament, f'http://{hostname}:8007/comm', f'http://{hostname}:8007/Stop')
+ServeiEntrega = Agent('ServeiEntrega', agn.ServeiEntrega, f'http://{hostname}:8000/comm', f'http://{hostname}:8000/Stop')
 
 cola1 = Queue()
 
@@ -482,15 +483,17 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
 
 @app.route("/pagar/<comanda_id>/<producte_nom>", methods=['GET'])
 def pagar_producte(producte_nom, comanda_id):
+    preu = request.args.get('preu', default=0.0, type=float)
     g = Graph()
-    action = ONTO['CobrarProductes' + str(get_count())]
+    action = ONTO['CobrarProductes_' + str(get_count())]
     g.add((action, RDF.type, ONTO.CobrarProductes))
     g.add((action, ONTO.DNI, Literal(DNIusuari)))
     g.add((action, ONTO.Nom, Literal(producte_nom)))
     g.add((action, ONTO.Comanda, Literal(comanda_id)))
-    msg = build_message(g, ACL.request, AgentAssistent.uri, AgentPagament.uri, action, get_count())
+    g.add((action, ONTO.Preu, Literal(preu)))
+    msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiEntrega.uri, action, get_count())
 
-    gproducts = send_message(msg, AgentPagament.address)
+    gproducts = send_message(msg, ServeiEntrega.address)
     return redirect(url_for('ver_comanda', comanda_id=comanda_id), code=302)
 
 def agentbehavior1(queue):
