@@ -211,6 +211,7 @@ def communication():
                     nom_producte = producte_result["nom"]["value"]
                     print(nom_producte)
                     gr.add((producte, ONTO.Nom, Literal(nom_producte)))
+
                     fuseki_url = 'http://localhost:3030/ONTO/update'
 
 

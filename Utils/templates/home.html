@@ -39,10 +39,16 @@
         <table>
             <tr>
                 <th>NOMBRE</th>
+                <th>PRECIO</th>
+                <th>MARCA</th>
+                <th>CATEGORIA</th>
             </tr>
             {% for p in products_recomenats %}
             <tr>
-                <td>{{ p }}</td>
+                <td>{{ p.Nom }}</td>
+                <td>{{ p.Preu }}</td>
+                <td>{{ p.Marca }}</td>
+                <td>{{ p.Categoria }}</td>
             </tr>
             {% endfor %}
         </table>

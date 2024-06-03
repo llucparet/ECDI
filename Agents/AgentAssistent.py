@@ -4,7 +4,7 @@ import flask
 import requests
 from SPARQLWrapper import SPARQLWrapper, JSON
 from flask import Flask, request, render_template, redirect, url_for
-from rdflib import Namespace, Graph, RDF, Literal, URIRef, XSD
+from rdflib import Namespace, Graph, RDF, Literal, URIRef
 
 from Utils.ACL import ACL
 from Utils.ACLMessages import build_message, get_message_properties, send_message
@@ -13,6 +13,7 @@ from Utils.Logger import config_logger
 from Utils.OntoNamespaces import ONTO
 import socket
 from multiprocessing import Queue, Process
+
 
 # Configuración de logging
 logger = config_logger(level=1)
@@ -140,7 +141,7 @@ def comunicacion():
                 return gr.serialize(format="xml"), 200
             elif accion == ONTO.CobrarProductesVenedorExtern:
                 logger.info("productes venedor extern")
-                for s,p,o in gm:
+                for s, p, o in gm:
                     if p == ONTO.Nom:
                         productes_externs.append(str(o))
                 print("productes externs")
@@ -148,6 +149,19 @@ def comunicacion():
                 gr.add((accion, RDF.type, ONTO.CobrarProductesVenedorExtern))
                 gr.add((accion, ONTO.DNI, Literal(DNIusuari)))
                 return gr.serialize(format="xml"), 200
+            elif accion == ONTO.RecomanarProductes:
+                logger.info("Recomanar productes")
+                for s, p, o in gm:
+                    if p == RDF.type and o == ONTO.Producte:
+                        nom = gm.value(subject=s, predicate=ONTO.Nom)
+                        preu = gm.value(subject=s, predicate=ONTO.Preu)
+                        marca = gm.value(subject=s, predicate=ONTO.Marca)
+                        categoria = gm.value(subject=s, predicate=ONTO.Categoria)
+                        producte = {"Nom": nom, "Preu": preu, "Marca": marca, "Categoria": categoria}
+                        productos_recomendados.append(producte)
+                print(productos_recomendados)
+                return gr.serialize(format="xml"), 200
+
 
 @app.route("/notificaciones", methods=['GET'])
 def notificaciones():
@@ -227,7 +241,7 @@ def realizar_compra(products_to_buy, city, priority, creditCard):
         if p == ONTO.PreuTotal:
             comanda_info['total'] = o
         if p == ONTO.ProductesComanda:
-            #productos_valorar_no_permitido.append(str(o))
+            # productos_valorar_no_permitido.append(str(o))
             values = "".join(f"<{o}> ")
             endpoint_url = "http://localhost:3030/ONTO/query"
             sparql_query = f"""
@@ -377,6 +391,7 @@ def historial_comandes():
     return render_template('historial_comandes.html', comandas=comandas,products_enviats=productes_enviats,products_externs=productes_externs)
 
 
+
 @app.route("/comanda/<comanda_id>", methods=['GET'])
 def ver_comanda(comanda_id):
     page = request.args.get('page', 1, type=int)
@@ -435,7 +450,7 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
 
-    SELECT ?producte_comanda ?nom ?preu ?data ?pagado ?enviat ?transportista ?retornat ?empresa
+    SELECT ?producte_comanda ?nom ?preu ?data ?pagado ?enviat ?transportista ?retornat ?empresa ?valoracio
     WHERE {{
         <{comanda_uri}> ont:ProductesComanda ?producte_comanda .
         ?producte_comanda rdf:type ont:ProducteComanda .
@@ -447,6 +462,7 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
         ?producte_comanda ont:TransportistaProducte ?transportista .
         ?producte_comanda ont:Retornat ?retornat .
         ?producte_comanda ont:Empresa ?empresa .
+        ?producte_comanda ont:Valoracio ?valoracio .
     }}
     ORDER BY ?producte_comanda
     """
@@ -466,7 +482,8 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
             "Enviado": result["enviat"]["value"],
             "Transportista": result["transportista"]["value"],
             "Retornat": result["retornat"]["value"],
-            "Empresa": result["empresa"]["value"]
+            "Empresa": result["empresa"]["value"],
+            "Valoracio": result["valoracio"]["value"]
         }
         print(producte)
         products.append(producte)

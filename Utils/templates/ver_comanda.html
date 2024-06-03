@@ -63,11 +63,13 @@
                         {% endif %}
                     </td>
                     <td>
-                        {% if product.Pagado == 'true' %}
+                        {% if product.Pagado == 'true' and product.Valoracio == 'Pendiente' %}
                             <form action="/valorar/{{ comanda.ID }}/{{ product.Nom }}" method="POST">
                                 <input type="number" name="valoracion" min="1" max="5" step="1" required>
                                 <input type="submit" value="Valorar">
                             </form>
+                        {% elif product.Pagado == 'true' and product.Valoracio != 'Pendiente' %}
+                            {{ product.Valoracio }}
                         {% else %}
                             Pendent de pagament
                         {% endif %}

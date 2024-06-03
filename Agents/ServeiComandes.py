@@ -27,7 +27,7 @@ port = 8012
 agn = Namespace("http://www.agentes.org#")
 
 # Contador de mensajes
-mss_cnt = 5
+mss_cnt = 1
 endpoint_url = "http://localhost:3030/ONTO/query"
 
 fuseki_url = 'http://localhost:3030/ONTO/data'
@@ -164,6 +164,7 @@ def registrar_comanda(id, ciutat, client, preu_total, prioritat, credit_card, pr
         g_comanda.add((producte_comanda_uri, ONTO.TransportistaProducte,
                        Literal(producte.get('Transportista', ""), datatype=XSD.string)))
         g_comanda.add((producte_comanda_uri, ONTO.Empresa, Literal(producte['Empresa'], datatype=XSD.string)))
+        g_comanda.add((producte_comanda_uri, ONTO.Valoracio, Literal(producte['Valoracio'], datatype=XSD.string)))
         g_comanda.add((comanda, ONTO.ProductesComanda, producte_comanda_uri))
 
     # Serializar el grafo a formato RDF/XML
@@ -266,7 +267,8 @@ def communication():
                                 'Pagat': False,
                                 'Enviat': False,
                                 'Transportista': "",
-                                'Empresa': empresa
+                                'Empresa': empresa,
+                                'Valoracio': "Pendiente"
                             }
                             llista_productes_externs.append(producte_extern)
 
@@ -313,7 +315,8 @@ def agentbehavior1(cola, comanda_id, llista_productes,llista_productes_externs, 
             'Pagat': pagat,
             'Enviat': enviat,
             'Transportista': transportista,
-            'Empresa': 'ECDI'
+            'Empresa': 'ECDI',
+            'Valoracio': "Pendiente"
         })
 
         value = "".join(f"<{producte}> ")
