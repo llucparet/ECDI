@@ -106,6 +106,8 @@
                     <td>
                         {% if product.Empresa != 'ECDI' and product.Pagado == 'false'%}
                             <a href="/pagar/{{comanda.ID}}/{{ product.Nom }}?preu={{ product.Preu }}&empresa={{ product.Empresa }}" class="button">Pagar</a>
+                        {% elif product.Empresa != 'ECDI' and product.Pagado == 'true'%}
+                            Pagat!!
                         {% elif product.Enviado == 'true' and product.Pagado == 'false'%}
                             <a href="/pagar/{{comanda.ID}}/{{ product.Nom }}?preu={{ product.Preu }}&empresa={{ product.Empresa }}" class="button">Pagar</a>
                         {% elif product.Enviado == 'false' %}
