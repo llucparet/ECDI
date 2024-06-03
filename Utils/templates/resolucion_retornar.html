@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>ECSDI - Resolución de Devolución</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to top, #fffbf9 0%, #97c4ff 100%);
+            color: #333;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            width: 90%;
+            max-width: 800px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+        }
+        .details {
+            margin-top: 20px;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-top: 20px;
+            background-color: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Resolución de la Devolución del Producto {{ producte_nom }}</h1>
+        {% if resolucio == "Retornat" %}
+            <p>La devolución ha sido aceptada.</p>
+            <div class="details">
+                <p><strong>Transportista:</strong> {{ transportista }}</p>
+                <p><strong>Fecha de recogida:</strong> {{ fecha_recogida }}</p>
+            </div>
+        {% else %}
+            <p>La devolución ha sido rechazada.</p>
+        {% endif %}
+        <a href="/comanda/{{ comanda_id }}" class="button">Volver a la Comanda</a>
+    </div>
+</body>
+</html>

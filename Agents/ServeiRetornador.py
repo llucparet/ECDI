@@ -1,13 +1,13 @@
 from multiprocessing import Queue, Process
+from SPARQLWrapper import SPARQLWrapper, JSON
 from flask import Flask, request
-from rdflib import Graph, Namespace, Literal, RDF, URIRef
+from rdflib import Graph, Namespace, Literal, RDF, URIRef, XSD
 from Utils.ACLMessages import build_message, send_message, get_message_properties
 from Utils.Agent import Agent
 from Utils.FlaskServer import shutdown_server
 from Utils.Logger import config_logger
 from Utils.OntoNamespaces import ONTO
 from Utils.ACL import ACL
-from rdflib.term import URIRef
 import datetime
 
 logger = config_logger(level=1)
@@ -113,32 +113,59 @@ def communication():
                 # Verificar si la devolución es válida
                 fecha_compra = datetime.datetime.strptime(str(data_compra), '%Y-%m-%d')
                 dias_pasados = (datetime.datetime.now() - fecha_compra).days
+                print(f"Días pasados desde la compra: {dias_pasados}")
 
-                if dias_pasados <= 14 and len(str(motiu)) > 50:
-                    # Devolución válida
-                    gr.add((content, RDF.type, ONTO.RetornarProducte))
-                    gr.add((content, ONTO.Resolucio, Literal("Retornat")))
-                    gr.add((content, ONTO.ProducteComanda, producte_comanda))
+                # Considerar cualquier valor negativo como menor que 15 o 30
+                if dias_pasados < 0 or \
+                   (motiu == "No se satisfan les expectatives del producte" and dias_pasados <= 15) or \
+                   (motiu in ["El producte és defectuós", "El producte és erroni"] and dias_pasados <= 30):
+                    resolucio = "Retornat"
                     print("Devolución válida")
 
-                    # Informar al ServeiEntrega para realizar el pago
-                    g_pago = Graph()
-                    accion_pago = ONTO["PagarUsuari_" + str(get_count())]
-                    g_pago.add((accion_pago, RDF.type, ONTO.PagarUsuari))
-                    g_pago.add((accion_pago, ONTO.Desti, client))
-                    g_pago.add((accion_pago, ONTO.Import, import_producte))
-                    g_pago.add((accion_pago, ONTO.ProducteComanda, producte_comanda))
+                    # Agregar detalles del transportista y fecha de recogida
+                    transportista = "Devolvedor"
+                    fecha_recogida = datetime.datetime.now() + datetime.timedelta(days=5)
+                    fecha_recogida_str = fecha_recogida.strftime('%Y-%m-%d')
 
-                    msg_pago = build_message(g_pago, ACL.request, ServeiEntrega.uri, AgentPagaments.uri, accion_pago,
-                                             get_count())
-                    send_message(msg_pago, AgentPagaments.address)
+                    gr.add((content, ONTO.Transportista, Literal(transportista)))
+                    gr.add((content, ONTO.DataRecogida, Literal(fecha_recogida_str, datatype=XSD.date)))
                 else:
-                    # Devolución no válida
-                    gr.add((content, RDF.type, ONTO.RetornarProducte))
-                    gr.add((content, ONTO.Resolucio, Literal("Rebutjat")))
-                    gr.add((content, ONTO.ProducteComanda, producte_comanda))
-                    gr.add((content, ONTO.Motiu, motiu))
+                    resolucio = "Rebutjat"
                     print("Devolución no válida")
+
+                # Crear respuesta
+                gr.add((content, RDF.type, ONTO.RetornarProducte))
+                gr.add((content, ONTO.Resolucio, Literal(resolucio)))
+                gr.add((content, ONTO.ProducteComanda, producte_comanda))
+                gr.add((content, ONTO.Motiu, motiu))
+
+                # Actualizar el estado de Retornat en Fuseki
+                update_sparql = f"""
+                PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+                PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
+
+                DELETE {{
+                    <{producte_comanda}> ont:Retornat ?oldState .
+                }}
+                INSERT {{
+                    <{producte_comanda}> ont:Retornat "{resolucio}" .
+                }}
+                WHERE {{
+                    <{producte_comanda}> ont:Retornat ?oldState .
+                }}
+                """
+
+                print(f"SPARQL Update Query:\n{update_sparql}")
+
+                sparql_update = SPARQLWrapper("http://localhost:3030/ONTO/update")
+                sparql_update.setQuery(update_sparql)
+                sparql_update.method = 'POST'
+                sparql_update.setReturnFormat(JSON)
+                try:
+                    response = sparql_update.query()
+                    print(f"SPARQL Update Response: {response}")
+                except Exception as e:
+                    print(f"Error executing SPARQL update: {e}")
             else:
                 print("Action not recognized")
 

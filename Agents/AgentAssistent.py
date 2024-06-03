@@ -374,7 +374,7 @@ def historial_comandes():
 @app.route("/comanda/<comanda_id>", methods=['GET'])
 def ver_comanda(comanda_id):
     page = request.args.get('page', 1, type=int)
-    products_per_page = 10
+    products_per_page = 8
     comanda = consultar_productes_comanda(comanda_id, page, products_per_page)
     total_pages = (comanda['TotalProducts'] // products_per_page) + 1
 
@@ -598,47 +598,26 @@ def retornar_producte(comanda_id, producte_nom):
         response = send_message(msg, ServeiRetornador.address)
 
         # Procesar la respuesta del ServeiRetornador
-        producte_comanda = None
         resolucio = None
+        transportista = None
+        fecha_recogida = None
+
         for s, p, o in response:
             if p == ONTO.Resolucio:
-                resolucio = o
-            if p == ONTO.ProducteComanda:
-                producte_comanda = o
+                resolucio = str(o)
+            if p == ONTO.Transportista:
+                transportista = str(o)
+            if p == ONTO.DataRecogida:
+                fecha_recogida = str(o)
 
-        print(f"Received response - ProducteComanda: {producte_comanda}, Resolucio: {resolucio}")
+        print(f"Received response - Resolucio: {resolucio}, Transportista: {transportista}, Fecha Recogida: {fecha_recogida}")
 
-        # Verificar que ambos valores están definidos
-        if producte_comanda and resolucio:
-            # Actualizar el estado de Retornat en Fuseki
-            update_sparql = f"""
-            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-            PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
+        if resolucio is None:
+            print("Error: No se pudo obtener la resolución de la devolución.")
+            resolucio = "Rebutjat"
 
-            DELETE {{
-                <{producte_comanda}> ont:Retornat ?oldState .
-            }}
-            INSERT {{
-                <{producte_comanda}> ont:Retornat "{resolucio}" .
-            }}
-            WHERE {{
-                <{producte_comanda}> ont:Retornat ?oldState .
-            }}
-            """
-
-            sparql_update = SPARQLWrapper("http://localhost:3030/ONTO/update")
-            sparql_update.setQuery(update_sparql)
-            sparql_update.method = 'POST'
-            sparql_update.setReturnFormat(JSON)
-            sparql_update.query()
-        else:
-            print("Error: No se pudo actualizar el estado de devolución del producto.")
-            if not producte_comanda:
-                print("Error: producte_comanda is None")
-            if not resolucio:
-                print("Error: resolucio is None")
-
-        return redirect(url_for('ver_comanda', comanda_id=comanda_id))
+        return render_template('resolucion_retornar.html', comanda_id=comanda_id, producte_nom=producte_nom,
+                               resolucio=resolucio, transportista=transportista, fecha_recogida=fecha_recogida)
 
     return render_template('retornar_producte.html', comanda_id=comanda_id, producte_nom=producte_nom)
 
