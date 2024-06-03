@@ -7,6 +7,20 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
+    <header>
+        <div class="header-icons">
+            <a href="/" class="home-icon"><img src="{{ url_for('static', filename='images/home-icon.png') }}" alt="Inicio"></a>
+            {% if products_enviats or products_externs %}
+            <a href="/notificaciones" class="active-notification-icon"><img src="{{ url_for('static', filename='images/active-notification-icon.png') }}" alt="Notificaciones sin leer"></a>
+            {% else %}
+            <a href="/notificaciones" class="notification-icon"><img src="{{ url_for('static', filename='images/notification-icon.png') }}" alt="Notificaciones"></a>
+            {% endif %}
+        </div>
+        <div class="logo">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo ECSDI">
+            <h1>ECSDI</h1>
+        </div>
+    </header>
     <div class="container">
         <h1>Búsqueda de productos</h1>
         <p>Usuario activo: {{ usuario }}</p>
@@ -52,9 +66,6 @@
             <input type="text" name="priority" placeholder="Prioridad de entrega (1, 2 o 3)">
             <input type="text" name="creditCard" placeholder="Tarjeta de crédito">
             <input type="submit" name="submit" value="Comprar">
-        </form>
-        <form method="post">
-            <input type="submit" name="submit" value="Volver al inicio">
         </form>
         {% endif %}
     </div>
