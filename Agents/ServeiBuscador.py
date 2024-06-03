@@ -53,14 +53,24 @@ def communication():
     return gr.serialize(format='xml'), 200
 
 def handle_search_request(gm, content):
-    filters = {p: gm.value(subject=restriccio, predicate=ONTO[p])
-               for restriccio in gm.objects(content, ONTO.Restriccions)
-               for p in ['Marca', 'PreuMax', 'PreuMin', 'Nom', 'Valoracio', 'Categoria']
-               if gm.value(subject=restriccio, predicate=RDF.type) == ONTO['Restriccio' + p]}
+    # Extrae las restricciones de búsqueda
+    filters = {}
+    for restriccio in gm.objects(content, ONTO.Restriccions):
+        tipo_restriccion = gm.value(subject=restriccio, predicate=RDF.type)
+        for p in ['Marca', 'Nom', 'Valoracio', 'Categoria']:
+            if tipo_restriccion == ONTO['Restriccio' + p]:
+                filters[p] = gm.value(subject=restriccio, predicate=ONTO[p])
+
+        # Trata las restricciones de precio como un caso especial
+        if tipo_restriccion == ONTO.RestriccioPreu:
+            filters['PreuMin'] = gm.value(subject=restriccio, predicate=ONTO.PreuMin, default=0.0)
+            filters['PreuMax'] = gm.value(subject=restriccio, predicate=ONTO.PreuMax, default=sys.float_info.max)
 
     logger.info(f'Applying filters: {filters}')
     gr = buscar_productos(**filters)
     return gr.serialize(format='xml'), 200
+
+
 
 def buscar_productos(**filters):
     endpoint_url = "http://localhost:3030/ONTO/query"
@@ -82,7 +92,8 @@ def buscar_productos(**filters):
 
     where_clause = " && ".join(conditions)
     if not where_clause:
-        where_clause = "?marca && ?nom && ?pes && ?preu && ?marca && ?valoracio && ?categoria && ?empresa"
+        where_clause = "1=1"
+
     query = f"""
         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         PREFIX ex: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
@@ -116,6 +127,7 @@ def buscar_productos(**filters):
     except Exception as e:
         logger.error(f"Error executing SPARQL query: {e}")
         return Graph()  # Return an empty graph on error
+
 
 @app.route("/Stop")
 def stop():

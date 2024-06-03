@@ -3,7 +3,7 @@ from multiprocessing import Queue, Process
 
 from SPARQLWrapper import SPARQLWrapper, POST, JSON, URLENCODED
 from flask import Flask, request
-from rdflib import Namespace, Graph, RDF, Literal
+from rdflib import Namespace, Graph, RDF, Literal, XSD
 import requests
 import random
 
@@ -48,6 +48,7 @@ app = Flask(__name__)
 fuseki_url = 'http://localhost:3030/ONTO/data'
 update_endpoint_url = 'http://localhost:3030/ONTO/update'
 
+
 def get_count():
     global mss_cnt
     mss_cnt += 1
@@ -79,6 +80,7 @@ def generate_unique_product_id(existing_ids):
         new_id = f'P{random.randint(1000, 9999)}'
         if new_id not in existing_ids:
             return new_id
+
 
 def delete_product_from_fuseki(product_id):
     query = f"""
@@ -147,17 +149,17 @@ def communication():
                 graphNewProduct.add((productSuj, ONTO.ID, Literal(identificador)))
                 for s, p, o in gm:
                     if p == ONTO.Nom:
-                        graphNewProduct.add((productSuj, ONTO.Nom, Literal(o)))
+                        graphNewProduct.add((productSuj, ONTO.Nom, Literal(o, datatype=XSD.string)))
                     elif p == ONTO.NomEmpresa:
-                        graphNewProduct.add((productSuj, ONTO.Empresa, Literal(o)))
+                        graphNewProduct.add((productSuj, ONTO.Empresa, Literal(o, datatype=XSD.string)))
                     elif p == ONTO.Marca:
-                        graphNewProduct.add((productSuj, ONTO.Marca, Literal(o)))
+                        graphNewProduct.add((productSuj, ONTO.Marca, Literal(o, datatype=XSD.string)))
                     elif p == ONTO.Preu:
-                        graphNewProduct.add((productSuj, ONTO.Preu, Literal(o)))
+                        graphNewProduct.add((productSuj, ONTO.Preu, Literal(o, datatype=XSD.float)))
                     elif p == ONTO.Pes:
-                        graphNewProduct.add((productSuj, ONTO.Pes, Literal(o)))
+                        graphNewProduct.add((productSuj, ONTO.Pes, Literal(o, datatype=XSD.float)))
                     elif p == ONTO.Categoria:
-                        graphNewProduct.add((productSuj, ONTO.Categoria, Literal(o)))
+                        graphNewProduct.add((productSuj, ONTO.Categoria, Literal(o, datatype=XSD.string)))
 
                 graphNewProduct.add((productSuj, ONTO.Valoracio, Literal(5)))
                 graphNewProduct.add((productSuj, ONTO.QuantitatValoracions, Literal(1)))
@@ -198,6 +200,7 @@ def communication():
                 return gr.serialize(format='xml'), 200
 
     return "Aquest agent s'encarregarà d'afegir productes."
+
 
 def agentbehavior1(queue):
     """
