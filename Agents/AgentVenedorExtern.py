@@ -75,11 +75,11 @@ def get_vendors():
         return {}
 
 
-def get_products_by_company():
-    query = """
+def get_products_by_company(company):
+    query = f"""
     PREFIX ns: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
     SELECT ?id ?nom ?marca ?empresa ?preu ?pes ?categoria ?valoracio
-    WHERE {
+    WHERE {{
         ?product a ns:Producte ;
                  ns:ID ?id ;
                  ns:Nom ?nom ;
@@ -89,8 +89,8 @@ def get_products_by_company():
                  ns:Pes ?pes ;
                  ns:Categoria ?categoria ;
                  ns:Valoracio ?valoracio .
-        FILTER (STR(?empresa) != "ECDI")
-    }
+        FILTER (STR(?empresa) = "{company}")
+    }}
     """
     response = requests.post(fuseki_url, data={'query': query}, headers={'Accept': 'application/sparql-results+json'})
     if response.status_code == 200:
@@ -110,37 +110,54 @@ def get_products_by_company():
         print(f"Error querying Fuseki: {response.status_code} - {response.text}")
         return []
 
+@app.route("/register", methods=['GET', 'POST'])
+def register():
+    vendors = get_vendors()
+    if request.method == 'GET':
+        return render_template('register_venedor_extern.html', vendors=vendors)
+    else:
+        selected_vendor = request.form['vendor']
+        # Guardar la empresa registrada en una variable global o en sesión
+        global registered_vendor
+        registered_vendor = selected_vendor
+        return render_template('home_venedor_extern.html', registered_vendor=registered_vendor)
 
 @app.route("/", methods=['GET'])
 def home():
-    return render_template('home_venedor_extern.html')
+    if 'registered_vendor' in globals():
+        return render_template('home_venedor_extern.html', registered_vendor=registered_vendor)
+    else:
+        return render_template('register_venedor_extern.html', vendors=get_vendors())
 
 
 @app.route("/new_product", methods=['GET', 'POST'])
 def add_product():
-    vendors = get_vendors()
+    if 'registered_vendor' not in globals():
+        return render_template('register_venedor_extern.html', vendors=get_vendors())
+
     if request.method == 'GET':
-        return render_template('nou_producte.html', vendors=vendors, start=True)
+        return render_template('nou_producte.html', start=True)
     else:
         if request.form['submit'] == 'Afegir':
-            nomEmpresa = request.form['companyName']
             nomProducte = request.form['productName']
             preu = request.form['price']
             marca = request.form['brand']
             categoria = request.form['category']
             pes = request.form['weight']
-            error, error_message = add_new_product(nomEmpresa, nomProducte, preu, marca, categoria, pes)
+            error, error_message = add_new_product(registered_vendor, nomProducte, preu, marca, categoria, pes)
             if error:
-                return render_template('nou_producte.html', start=True, vendors=vendors, error=True, error_message=error_message)
+                return render_template('nou_producte.html', start=True, error=True, error_message=error_message)
             else:
-                return render_template('nou_producte.html', start=False)
+                return render_template('nou_producte.html', start=False, success=True)
         if request.form['submit'] == 'Tornar':
-            return render_template('home_venedor_extern.html')
+            return render_template('home_venedor_extern.html', registered_vendor=registered_vendor)
 
 
 @app.route("/list_products", methods=['GET'])
 def list_products():
-    products = get_products_by_company()
+    if 'registered_vendor' not in globals():
+        return render_template('register_venedor_extern.html', vendors=get_vendors())
+    products = get_products_by_company(registered_vendor)
     return render_template('list_products_venedor_extern.html', products=products)
 
 @app.route("/delete_product", methods=['POST'])

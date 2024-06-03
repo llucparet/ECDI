@@ -14,6 +14,7 @@
     </header>
     <div class="container">
         <h1>AGENTE VENDEDOR EXTERNO ECSDI</h1>
+        <p>Bienvenido, {{ registered_vendor }}</p>
         <form action="/new_product" method="get">
             <input type="submit" name="submit" value="Crear Nuevo Producto">
         </form>
@@ -22,7 +23,7 @@
         <form action="/list_products" method="get">
             <input type="submit" name="submit" value="Listar Productos">
         </form>
-        <p>Listar los productos disponibles de cada empresa.</p>
+        <p>Listar los productos disponibles de su empresa.</p>
     </div>
 </body>
 </html>
