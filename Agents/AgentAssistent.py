@@ -6,7 +6,6 @@ from SPARQLWrapper import SPARQLWrapper, JSON
 from flask import Flask, request, render_template, redirect, url_for
 from rdflib import Namespace, Graph, RDF, Literal, URIRef
 
-from Agents import ServeiClients
 from Utils.ACL import ACL
 from Utils.ACLMessages import build_message, get_message_properties, send_message
 from Utils.Agent import Agent
@@ -35,8 +34,7 @@ ServeiBuscador = Agent('ServeiBuscador', agn.ServeiBuscador, f'http://{hostname}
 ServeiComandes = Agent('ServeiComandes', agn.ServeiComandes, f'http://{hostname}:8012/comm', f'http://{hostname}:9012/Stop')
 AgentPagament = Agent('AgentPagament', agn.AgentPagament, f'http://{hostname}:8007/comm', f'http://{hostname}:8007/Stop')
 ServeiEntrega = Agent('ServeiEntrega', agn.ServeiEntrega, f'http://{hostname}:8000/comm', f'http://{hostname}:8000/Stop')
-ServeiClients = Agent('ServeiClients', agn.ServeiClients, f'http://{hostname}:8024/comm',
-                      f'http://{hostname}:8024/Stop')
+ServeiClients = Agent('ServeiClients', agn.ServeiClients, f'http://{hostname}:8024/comm',f'http://{hostname}:8024/Stop')
 
 cola1 = Queue()
 

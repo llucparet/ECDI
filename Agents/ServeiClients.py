@@ -2,25 +2,23 @@ import socket
 from flask import Flask, request
 from rdflib import Namespace, Graph, RDF, Literal, URIRef, XSD
 from SPARQLWrapper import SPARQLWrapper, JSON
-from Utils.ACLMessages import build_message, send_message, get_message_properties
+from Utils.ACLMessages import build_message, get_message_properties
 from Utils.Agent import Agent
 from Utils.Logger import config_logger
 from Utils.OntoNamespaces import ONTO
 from Utils.ACL import ACL
 
-import time
-
 logger = config_logger(level=1)
 
-hostname = socket.gethostname()
+hostname = "localhost"
 port = 8024
 
 agn = Namespace("http://www.agentes.org#")
 
-AgentValoraciones = Agent('AgentValoraciones',
-                          agn.AgentValoraciones,
-                          f'http://{hostname}:{port}/comm',
-                          f'http://{hostname}:{port}/Stop')
+ServeiClients = Agent('ServeiClients',
+                      agn.ServeiClients,
+                      f'http://{hostname}:{port}/comm',
+                      f'http://{hostname}:{port}/Stop')
 
 app = Flask(__name__)
 
@@ -34,30 +32,30 @@ def get_count():
     mss_cnt += 1
     return mss_cnt
 
-@app.route("/comm", methods=['POST'])
+@app.route("/comm", methods=['GET'])
 def communication():
     """
     Communication entry point for the agent.
     """
-    message = request.data
+    message = request.args.get('content')
     gm = Graph()
     gm.parse(data=message, format='xml')
     msgdic = get_message_properties(gm)
 
     if not msgdic:
-        gr = build_message(Graph(), ACL['not-understood'], sender=AgentValoraciones.uri, msgcnt=get_count())
+        gr = build_message(Graph(), ACL['not-understood'], sender=ServeiClients.uri, msgcnt=get_count())
     elif msgdic['performative'] != ACL.request:
-        gr = build_message(Graph(), ACL['not-understood'], sender=AgentValoraciones.uri, msgcnt=get_count())
+        gr = build_message(Graph(), ACL['not-understood'], sender=ServeiClients.uri, msgcnt=get_count())
     else:
         content = msgdic['content']
         accion = gm.value(subject=content, predicate=RDF.type)
 
         if accion == ONTO.ValorarProducte:
-            nombre_producto = str(gm.value(predicate=ONTO.Nom))
-            nueva_valoracion = float(gm.value(predicate=ONTO.Valoracio))
-            comanda_id = str(gm.value(predicate=ONTO.Comanda))
+            nombre_producto = str(gm.value(subject=content, predicate=ONTO.Nom))
+            nueva_valoracion = float(gm.value(subject=content, predicate=ONTO.Valoracio))
+            comanda_id = str(gm.value(subject=content, predicate=ONTO.Comanda))
             update_product_rating(nombre_producto, nueva_valoracion, comanda_id)
-            gr = build_message(Graph(), ACL['inform'], sender=AgentValoraciones.uri, msgcnt=get_count())
+            gr = build_message(Graph(), ACL['inform'], sender=ServeiClients.uri, msgcnt=get_count())
 
     return gr.serialize(format='xml')
 
@@ -65,6 +63,7 @@ def update_product_rating(nombre_producto, nueva_valoracion, comanda_id):
     sparql = SPARQLWrapper(query_endpoint_url)
     sparql.setQuery(f"""
         PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
+        PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
         SELECT ?valoracion WHERE {{
             ?producto ont:Nom "{nombre_producto}" ;
                       ont:Valoracio ?valoracion .
@@ -86,6 +85,7 @@ def update_product_rating(nombre_producto, nueva_valoracion, comanda_id):
     update_sparql.setMethod('POST')
     update_sparql.setQuery(f"""
         PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
+        PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
         DELETE WHERE {{
             ?producto ont:Nom "{nombre_producto}" ;
                       ont:Valoracio ?valoracion .
@@ -106,6 +106,7 @@ def update_producte_comanda_rating(comanda_id, nombre_producto, nueva_valoracion
     update_sparql.setMethod('POST')
     update_sparql.setQuery(f"""
         PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
+        PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
         DELETE WHERE {{
             ?producte_comanda ont:Nom "{nombre_producto}" ;
                               ont:Valoracio ?valoracion .
