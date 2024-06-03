@@ -205,7 +205,7 @@ def communication():
                 comanda = ""
                 nom_producte = ""
                 preu = ""
-                empresa = "ECDI"
+                empresa = ""
                 g = Graph()
                 action = ONTO['CobrarProductes_' + str(get_count())]
                 g.add((action, RDF.type, ONTO.CobrarProductes))
