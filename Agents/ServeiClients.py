@@ -14,7 +14,7 @@ from Utils.ACL import ACL
 
 logger = config_logger(level=1)
 
-hostname = "localhost"
+hostname = '0.0.0.0'
 port = 8024
 
 agn = Namespace("http://www.agentes.org#")

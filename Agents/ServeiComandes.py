@@ -21,7 +21,7 @@ from Utils.ACLMessages import build_message, send_message, get_message_propertie
 logger = config_logger(level=1)
 
 # Configuration stuff
-hostname = "localhost"
+hostname = '0.0.0.0'
 port = 8012
 
 agn = Namespace("http://www.agentes.org#")

@@ -20,7 +20,7 @@ from Utils.ACLMessages import send_message
 logger = config_logger(level=1)
 
 # Configuración del agente
-hostname = "localhost"
+hostname = '0.0.0.0'
 ciutat = None
 # Namespaces para RDF
 agn = Namespace("http://www.agentes.org#")

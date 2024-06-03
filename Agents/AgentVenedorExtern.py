@@ -17,7 +17,7 @@ from multiprocessing import Process, Queue
 logger = config_logger(level=1)
 
 # Configuration stuff
-hostname = "localhost"
+hostname = '0.0.0.0'
 port = 8080
 
 agn = Namespace("http://www.agentes.org#")

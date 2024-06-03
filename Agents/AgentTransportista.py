@@ -39,7 +39,7 @@ from Utils.ACLMessages import send_message, build_message
 logger = config_logger(level=1)
 
 # Configuration stuff
-hostname = "localhost"
+hostname = '0.0.0.0'
 port = None
 ciutat = None
 

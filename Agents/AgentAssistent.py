@@ -19,7 +19,7 @@ from multiprocessing import Queue, Process
 logger = config_logger(level=1)
 
 # Configuración del agente
-hostname = "localhost"
+hostname = '0.0.0.0'
 port = 9011
 
 # Namespaces para RDF
