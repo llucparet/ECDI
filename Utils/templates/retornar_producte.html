@@ -3,74 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <title>ECSDI - Devolución de Producto</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background: linear-gradient(to top, #fffbf9 0%, #97c4ff 100%);
-            color: #333;
-            height: 100vh;
+        .buttons {
             display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .container {
-            width: 90%;
-            max-width: 800px;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-        }
-        .radio-group {
-            margin-top: 10px;
-        }
-        .radio-group label {
-            display: block;
-            margin-bottom: 10px;
+            justify-content: space-between;
+            margin-top: 20px;
         }
         .button {
-            display: inline-block;
-            padding: 10px 20px;
-            margin-top: 20px;
-            background-color: #4CAF50;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
+            flex: 1;
             text-align: center;
         }
-        .button:hover {
-            background-color: #45a049;
+        .button:not(:last-child) {
+            margin-right: 20px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
+    <header>
+        <div class="header-icons">
+            <a href="/" class="home-icon"><img src="{{ url_for('static', filename='images/home-icon.png') }}" alt="Inicio"></a>
+            {% if products_enviats or products_externs %}
+            <a href="/notificaciones" class="active-notification-icon"><img src="{{ url_for('static', filename='images/active-notification-icon.png') }}" alt="Notificaciones sin leer"></a>
+            {% else %}
+            <a href="/notificaciones" class="notification-icon"><img src="{{ url_for('static', filename='images/notification-icon.png') }}" alt="Notificaciones"></a>
+            {% endif %}
+        </div>
+        <div class="logo">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo ECSDI">
+            <h1>ECSDI</h1>
+        </div>
+    </header>
     <div class="container">
         <h1>Devolución del Producto {{ producte_nom }}</h1>
         <form method="POST">
             <label for="motivo">Motivo de la devolución:</label>
             <div class="radio-group">
-                <label>
-                    <input type="radio" name="motivo" value="No se satisfan les expectatives del producte" required>
-                    No se satisfan les expectatives del producte
-                </label>
-                <label>
-                    <input type="radio" name="motivo" value="El producte és defectuós">
-                    El producte és defectuós
-                </label>
-                <label>
-                    <input type="radio" name="motivo" value="El producte és erroni">
-                    El producte és erroni
-                </label>
+                <ul>
+                    <li>
+                        <label>
+                            <input type="radio" name="motivo" value="No se satisfan les expectatives del producte" required>
+                            No se satisfan les expectatives del producte
+                        </label>
+                    </li>
+                    <li>
+                        <label>
+                            <input type="radio" name="motivo" value="El producte és defectuós">
+                            El producte és defectuós
+                        </label>
+                    </li>
+                    <li>
+                        <label>
+                            <input type="radio" name="motivo" value="El producte és erroni">
+                            El producte és erroni
+                        </label>
+                    </li>
+                </ul>
             </div>
-            <button type="submit" class="button">Enviar</button>
+            <div class="buttons">
+                <a href="/comanda/{{ comanda_id }}" class="button">Cancelar</a>
+                <button type="submit" class="button">Enviar</button>
+            </div>
         </form>
-        <a href="/comanda/{{ comanda_id }}" class="button">Cancelar</a>
     </div>
 </body>
 </html>

@@ -11,18 +11,16 @@ header {
     color: white;
     padding: 10px 0;
     text-align: center;
-    position: relative;
 }
 
 header .header-icons {
-    position: absolute;
-    top: 50%;
-    left: 10px;
-    transform: translateY(-50%);
+    display: flex;
+    justify-content: space-between;
+    padding: 0 10px;
 }
 
 header .header-icons a {
-    margin-right: 10px;
+    display: inline-block;
 }
 
 header .header-icons img {
@@ -55,6 +53,14 @@ header .logo img {
 h1 {
     color: #007bff;
     text-align: center;
+}
+
+.notification-section {
+    margin-top: 20px;
+}
+
+.notification-section h2 {
+    color: #333;
 }
 
 table {
@@ -150,4 +156,8 @@ footer {
     position: fixed;
     width: 100%;
     bottom: 0;
+}
+
+header .header-icons a.active-notification-icon img {
+    filter: hue-rotate(0deg) saturate(1000%) brightness(0.5); /* Cambia el color a rojo */
 }
