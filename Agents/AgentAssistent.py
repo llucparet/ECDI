@@ -26,7 +26,7 @@ port = 9011
 agn = Namespace("http://www.agentes.org#")
 
 # Instancia del Flask app
-app = Flask(__name__, template_folder='../Utils/templates')
+app = Flask(__name__, template_folder='../Utils/templates', static_folder='../static')
 
 # Agentes del sistema
 AgentAssistent = Agent('AgentAssistent', agn.AgentAssistent, f'http://{hostname}:{port}/comm', f'http://{hostname}:{port}/Stop')
@@ -34,6 +34,7 @@ ServeiBuscador = Agent('ServeiBuscador', agn.ServeiBuscador, f'http://{hostname}
 ServeiComandes = Agent('ServeiComandes', agn.ServeiComandes, f'http://{hostname}:8012/comm', f'http://{hostname}:9012/Stop')
 AgentPagament = Agent('AgentPagament', agn.AgentPagament, f'http://{hostname}:8007/comm', f'http://{hostname}:8007/Stop')
 ServeiEntrega = Agent('ServeiEntrega', agn.ServeiEntrega, f'http://{hostname}:8000/comm', f'http://{hostname}:8000/Stop')
+ServeiClients = Agent('ServeiClients', agn.ServeiClients, f'http://{hostname}:8024/comm',f'http://{hostname}:8024/Stop')
 
 cola1 = Queue()
 
@@ -459,6 +460,23 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
     }
 
     return comanda
+
+
+@app.route("/valorar/<comanda_id>/<producte_nom>", methods=['POST'])
+def valorar_producte(comanda_id, producte_nom):
+    valoracion = request.form['valoracion']
+    g = Graph()
+    action = ONTO['ValorarProducte' + str(get_count())]
+    g.add((action, RDF.type, ONTO.ValorarProducte))
+    g.add((action, ONTO.DNI, Literal(DNIusuari)))
+    g.add((action, ONTO.Nom, Literal(producte_nom)))
+    g.add((action, ONTO.Comanda, Literal(comanda_id)))
+    g.add((action, ONTO.Valoracio, Literal(float(valoracion))))
+    msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiClients.uri, action, get_count())
+
+    send_message(msg, ServeiClients.address)
+    return redirect(url_for('ver_comanda', comanda_id=comanda_id), code=302)
+
 
 @app.route("/pagar/<comanda_id>/<producte_nom>", methods=['GET'])
 def pagar_producte(producte_nom, comanda_id):
