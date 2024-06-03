@@ -118,7 +118,10 @@
                     </td>
                     <td>
                         {% if product.Pagado == 'true' %}
-                            <a href="/valorar/{{comanda.ID}}/{{ product.Nom }}" class="button">Valorar</a>
+                            <form action="/valorar/{{ comanda.ID }}/{{ product.Nom }}" method="POST">
+                                <input type="number" name="valoracion" min="1" max="5" step="1" required>
+                                <input type="submit" value="Valorar">
+                            </form>
                         {% else %}
                             Pendent de pagament
                         {% endif %}
