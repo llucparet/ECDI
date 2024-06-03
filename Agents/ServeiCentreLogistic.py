@@ -26,7 +26,7 @@ ciutat = None
 agn = Namespace("http://www.agentes.org#")
 
 # Instancia del Flask app
-app = Flask(__name__, template_folder='../Utils/templates')
+app = Flask(__name__, template_folder='../Utils/templates', static_folder='../static')
 
 # Contador de mensajes
 mss_cnt = 0

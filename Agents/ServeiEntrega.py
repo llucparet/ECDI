@@ -197,7 +197,7 @@ def communication():
                 msg = build_message(gr, ACL.request, ServeiEntrega.uri, AgentAssistent.uri, accion,
                                     get_count())
                 resposta = send_message(msg, AgentAssistent.address)
-                return gg.serialize(format="xml"),200
+                return gg.serialize(format="xml"), 200
 
             elif accion == ONTO.CobrarProductes:
                 print("Cobrar productes")
@@ -233,9 +233,38 @@ def communication():
                 registrar_transaccio(dni,empresa, nom_producte, preu)
                 msg = build_message(g, ACL.request, ServeiEntrega.uri, AgentPagament.uri, action, get_count())
 
-                gproducts = send_message(msg, AgentPagament.address)
+                gresposta = send_message(msg, AgentPagament.address)
 
-                return gproducts.serialize(format="xml"), 200
+                if empresa != "ECDI":
+                    g = Graph()
+                    action = ONTO['PagarVenedorExtern' + str(get_count())]
+                    g.add((action, RDF.type, ONTO.PagarVenedorExtern))
+                    msg = build_message(g, ACL.request, ServeiEntrega.uri, AgentPagament.uri, action, get_count())
+                    gresposta = send_message(msg, AgentPagament.address)
+
+                return gresposta.serialize(format="xml"), 200
+            elif accion == ONTO.CobrarProductesVenedorExtern:
+                gr.add((accion, RDF.type, ONTO.CobrarProductesVenedorExtern))
+                for s, p, o in gm:
+                    if p == ONTO.DNI:
+                        dni = o
+                    elif p == ONTO.Comanda:
+                        comanda = o
+                    elif p == ONTO.Nom:
+                        nom_producte = o
+                        gr.add((accion, ONTO.Nom, o))
+                    elif p == ONTO.Preu:
+                        preu = o
+                    elif p == ONTO.Empresa:
+                        empresa = o
+                        gr.add((accion, ONTO.Empresa, o))
+
+                msg = build_message(gr, ACL.request, ServeiEntrega.uri, AgentAssistent.uri, accion,
+                                    get_count())
+                resposta = send_message(msg, AgentAssistent.address)
+
+                return resposta.serialize(format="xml"), 200
+
 def registrar_transaccio(pagador,cobrador,producte,preu):
     g = Graph()
     accio = ONTO['Transaccio_' + str(get_count())]
