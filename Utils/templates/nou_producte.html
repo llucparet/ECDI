@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>ECSDI - Añadir Producto Externo</title>
+    <title>ECSDI - Crear Nuevo Producto</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
@@ -13,31 +13,36 @@
         </div>
     </header>
     <div class="container">
-        <h1>Añadir Producto Externo</h1>
-        {% if start %}
-            <form method="post">
-                {% if error %}
-                    <p class="error">{{ error_message }}</p>
-                {% endif %}
-                <select name="companyName">
-                    <option value="">Selecciona el vendedor</option>
-                    {% for vendor in vendors %}
-                        <option value="{{ vendor }}">{{ vendor }}</option>
-                    {% endfor %}
-                </select><br>
-                <input type="text" name="productName" placeholder="Nombre del producto"/><br>
-                <input type="text" name="brand" placeholder="Marca del producto"/><br>
-                <input type="text" name="category" placeholder="Categoría del producto"/><br>
-                <input type="text" name="price" placeholder="Precio del producto en €"/><br>
-                <input type="text" name="weight" placeholder="Peso del producto en kg"/><br>
-                <input type="submit" name="submit" value="Afegir">
+        <h1>Crear Nuevo Producto</h1>
+        {% if success %}
+            <p class="success">Producto creado exitosamente.</p>
+            <form action="/" method="get">
+                <input type="submit" value="Volver al Home">
             </form>
         {% else %}
-            <p>Su producto ha sido añadido correctamente al catálogo de la tienda.</p>
-            <br>
-            <form method="get" action="/">
+            <form method="post" action="/new_product">
+                <input type="hidden" name="companyName" value="{{ registered_vendor }}">
+                <label for="productName">Nombre del Producto:</label>
+                <input type="text" id="productName" name="productName" required><br><br>
+
+                <label for="price">Precio:</label>
+                <input type="text" id="price" name="price" required><br><br>
+
+                <label for="brand">Marca:</label>
+                <input type="text" id="brand" name="brand" required><br><br>
+
+                <label for="category">Categoría:</label>
+                <input type="text" id="category" name="category" required><br><br>
+
+                <label for="weight">Peso:</label>
+                <input type="text" id="weight" name="weight" required><br><br>
+
+                <input type="submit" name="submit" value="Afegir">
                 <input type="submit" name="submit" value="Tornar">
             </form>
+            {% if error %}
+                <p class="error">{{ error_message }}</p>
+            {% endif %}
         {% endif %}
     </div>
 </body>
