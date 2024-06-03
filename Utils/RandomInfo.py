@@ -27,7 +27,7 @@ centros_logisticos = ["http://www.semanticweb.org/ecsdi/ontologies/2024/4/Banyol
 venedors_externs = {
     "Nike": "ESBN00909191",
     "IKEA": "ESBN0123442212",
-    "Apple": "ESBN91120302102"
+    "Zara": "ESBN91120302102"
 }
 
 # Función para generar un ID único

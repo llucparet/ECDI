@@ -95,17 +95,19 @@
                     <td>{{ product.Nom }}</td>
                     <td>{{ product.Preu }} €</td>
                     <td>{{ product.Data }}</td>
-                    <td>{{ product.Transportista }}</td>
+                    <td>{{ product.Transportista}}</td>
                     <td>
-                        {% if product.Enviado == 'true' %}
-                            <a href="/pagar/{{ comanda.ID }}/{{ product.Nom }}" class="button">Pagar</a>
-                        {% else %}
+                        {% if product.Enviado == 'true' and product.Pagado == 'false'%}
+                            <a href="/pagar/{{comanda.ID}}/{{ product.Nom }}" class="button">Pagar</a>
+                        {% elif product.Enviado == 'false' %}
                             Pendent de Enviament
+                        {% else %}
+                            Pagat!!
                         {% endif %}
                     </td>
                     <td>
                         {% if product.Pagado == 'true' %}
-                            <a href="/valorar/{{ comanda.ID }}/{{ product.Nom }}" class="button">Valorar</a>
+                            <a href="/valorar/{{comanda.ID}}/{{ product.Nom }}" class="button">Valorar</a>
                         {% else %}
                             Pendent de pagament
                         {% endif %}
