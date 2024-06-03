@@ -104,7 +104,7 @@ def centro_logistico_mas_cercano(ciudades_centros, coordenadas_destino):
 
     if not coordenadas_destino:
         print(f"No se pudieron obtener las coordenadas de la ciudad destino:")
-        return None
+        coordenadas_destino = (41.3825, 2.1769)
 
     distancia_minima = float('inf')
     centro_mas_cercano = None
@@ -283,6 +283,7 @@ def communication():
 def agentbehavior1(cola, comanda_id, llista_productes,llista_productes_externs, ciutat, priority, creditcard, dni,comanda, gm,preu_total):
     products = []
     coordenadas_destino = obtener_coordenadas(ciutat)
+    print(coordenadas_destino)
     for producte in llista_productes:
         preu = float(gm.value(producte, ONTO.Preu))
         nom = str(gm.value(producte, ONTO.Nom))

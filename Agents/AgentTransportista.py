@@ -178,7 +178,7 @@ def calcular_distancia(city):
 
     if not coordenadas_ciudad:
         print(f"No se pudieron obtener las coordenadas de la ciudad: {city}")
-        return None
+        coordenadas_ciudad = (41.3825, 2.1769)
 
     location_bany = (42.1167, 2.7667)
     location_bcn = (41.3825, 2.1769)
@@ -299,14 +299,14 @@ def communication():
                 print(trobat)
                 return gr.serialize(format="xml"), 200
 
-            elif accion == ONTO.EnviarPaquet:
+            elif accion == ONTO.AssignarTransportista:
                 lot = ""
                 for s, p, o in gm:
                     if p == ONTO.Lot:
                         lot = str(o)
                     elif p == ONTO.Nom:
                         nom = str(o)
-                logger.info(f"El transportista {nom} " + " ha recogido el paquete " + lot)
+                logger.info(f"El transportista {nom} " + " ha recogido el lot amb id " + lot)
                 g = Graph()
                 return g.serialize(format='xml'), 200
 
