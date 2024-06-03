@@ -24,31 +24,37 @@
         <h1>Notificaciones</h1>
 
         {% if products_enviats %}
-        <p>¡Estos son los últimos productos que te recomendamos! ¡Aprovecha!</p>
-        <table>
-            <tr>
-                <th>Els productes de la seguent llista han sigut enviats i ja esta disponible el seu pagament (pots consultar la data d'entrega a "Historial de Compres"</th>
-            </tr>
-            {% for p in products_enviats %}
-            <tr>
-                <td>{{ p }}</td>
-            </tr>
-            {% endfor %}
-        </table>
+        <div class="notification-section">
+            <h2>Productos Enviados</h2>
+            <p>Els productes de la seguent llista han sigut enviats i ja esta disponible el seu pagament (pots consultar la data d'entrega a "Historial de Compres")</p>
+            <table>
+                <tr>
+                    <th>Producto</th>
+                </tr>
+                {% for p in products_enviats %}
+                <tr>
+                    <td>{{ p }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
         {% endif %}
 
         {% if products_externs %}
-        <p>¡Estos son los últimos productos que te recomendamos! ¡Aprovecha!</p>
-        <table>
-            <tr>
-                <th>Pots procedir al pagament dels seguents productes externs a "Historial de Compres"</th>
-            </tr>
-            {% for p in products_externs %}
-            <tr>
-                <td>{{ p }}</td>
-            </tr>
-            {% endfor %}
-        </table>
+        <div class="notification-section">
+            <h2>Productos Externos</h2>
+            <p>Pots procedir al pagament dels seguents productes externs a "Historial de Compres"</p>
+            <table>
+                <tr>
+                    <th>Producto</th>
+                </tr>
+                {% for p in products_externs %}
+                <tr>
+                    <td>{{ p }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
         {% endif %}
     </div>
 </body>
