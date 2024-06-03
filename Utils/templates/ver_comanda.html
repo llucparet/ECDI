@@ -107,6 +107,8 @@
                     <td>
                         {% if product.Empresa != 'ECDI' and product.Pagado == 'false'%}
                             <a href="/pagar/{{comanda.ID}}/{{ product.Nom }}?preu={{ product.Preu }}&empresa={{ product.Empresa }}" class="button">Pagar</a>
+                        {% elif product.Empresa != 'ECDI' and product.Pagado == 'true'%}
+                            Pagat!!
                         {% elif product.Enviado == 'true' and product.Pagado == 'false'%}
                             <a href="/pagar/{{comanda.ID}}/{{ product.Nom }}?preu={{ product.Preu }}&empresa={{ product.Empresa }}" class="button">Pagar</a>
                         {% elif product.Enviado == 'false' %}
@@ -117,7 +119,10 @@
                     </td>
                     <td>
                         {% if product.Pagado == 'true' %}
-                            <a href="/valorar/{{comanda.ID}}/{{ product.Nom }}" class="button">Valorar</a>
+                            <form action="/valorar/{{ comanda.ID }}/{{ product.Nom }}" method="POST">
+                                <input type="number" name="valoracion" min="1" max="5" step="1" required>
+                                <input type="submit" value="Valorar">
+                            </form>
                         {% else %}
                             Pendent de pagament
                         {% endif %}

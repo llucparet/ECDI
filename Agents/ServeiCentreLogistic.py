@@ -14,7 +14,6 @@ from Utils.OntoNamespaces import ONTO
 from Utils.ACL import ACL
 from Utils.Logger import config_logger
 
-
 from Utils.ACLMessages import send_message
 
 # Configuración de logging
@@ -22,7 +21,6 @@ logger = config_logger(level=1)
 
 # Configuración del agente
 hostname = "localhost"
-port = None
 ciutat = None
 # Namespaces para RDF
 agn = Namespace("http://www.agentes.org#")
@@ -36,8 +34,8 @@ mss_cnt = 0
 # Agentes del sistema
 ServeiCentreLogistic = Agent('ServeiCentreLogistic',
                              agn.ServeiCentreLogistic,
-                             f'http://{hostname}:{port}/comm',
-                             f'http://{hostname}:{port}/Stop')
+                             None,
+                             None)
 
 ServeiComandes = Agent('ServeiComandes',
                        agn.ServeiComandes,
@@ -87,7 +85,12 @@ def run_agent(portx, city):
     port = portx
     global ciutat
     ciutat = city
+
+    ServeiCentreLogistic.address = f'http://{hostname}:{port}/comm'
+    ServeiCentreLogistic.stop = f'http://{hostname}:{port}/Stop'
+
     app.run(host=hostname, port=portx)
+
 @app.route("/comm", methods=['GET'])
 def communication():
     """
@@ -197,10 +200,10 @@ def communication():
                                 preu_mes_barat = nou_preu
                 print("hola2")
                 ab1 = Process(target=enviar_paquet,
-                              args=(gr, transportista,nom_transportista))
+                              args=(gr, transportista, nom_transportista, port + 5))
                 ab1.start()
                 ab1.join()
-                preu = reclamar_pagament(gr,transportista,nom_transportista, preu_mes_barat+preu_compra, data,productes)
+                preu = reclamar_pagament(gr, transportista, nom_transportista, preu_mes_barat+preu_compra, data, productes)
 
                 gresposta = Graph()
                 accion = ONTO["InformarEnviament_" + str(count)]
@@ -209,7 +212,7 @@ def communication():
 
                 return gresposta.serialize(format="xml"), 200
 
-def enviar_paquet(gr, transportista, nom_transportista):
+def enviar_paquet(gr, transportista, nom_transportista, port):
     genvio = Graph()
     for s, p, o in gr:
         if p == ONTO.EnviaCondicions:
@@ -217,10 +220,10 @@ def enviar_paquet(gr, transportista, nom_transportista):
     count = get_count()
     accion = ONTO["AssignarTransportista_" + str(count)]
     genvio.add((accion, RDF.type, ONTO.AssignarTransportista))
-    genvio.add((accion, ONTO.AssignarLot, lot))
+    genvio.add((accion, ONTO.Lot, lot))
     genvio.add((accion, ONTO.Transportista, transportista))
     genvio.add((transportista, ONTO.Nom, nom_transportista))
-    AgentTransportista = asignar_port_agenttrasportista(port + 5)
+    AgentTransportista = asignar_port_agenttrasportista(port)
     msg = build_message(genvio, ACL.request, ServeiCentreLogistic.uri,
                         AgentTransportista.uri, accion, count)
 
@@ -228,7 +231,7 @@ def enviar_paquet(gr, transportista, nom_transportista):
 
     return resposta.serialize(format='xml'), 200
 
-def reclamar_pagament(gr,transportista, nom_transportista, preu, data, productes):
+def reclamar_pagament(gr, transportista, nom_transportista, preu, data, productes):
     genvio = Graph()
     for s, p, o in gr:
         if p == ONTO.EnviaCondicions:
@@ -241,7 +244,7 @@ def reclamar_pagament(gr,transportista, nom_transportista, preu, data, productes
     accion = ONTO["InformarEnviament_" + str(count)]
     genvio.add((accion, RDF.type, ONTO.InformarEnviament))
     genvio.add((accion, ONTO.InforamrLot, lot))
-    genvio.add((lot,ONTO.ComandaLot,comanda))
+    genvio.add((lot, ONTO.ComandaLot, comanda))
     genvio.add((accion, ONTO.Data, Literal(data, datatype=XSD.string)))
     genvio.add((accion, ONTO.Transportista, transportista))
     genvio.add((transportista, ONTO.Nom, nom_transportista))
