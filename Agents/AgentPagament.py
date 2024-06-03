@@ -135,6 +135,10 @@ def communication():
                     print(f"Error en executar la consulta SPARQL: {response.status_code}")
                     print(response.text)
                 return gr.serialize(format='xml'), 200
+            elif accion == ONTO.PagarVenedorExtern:
+                logger.info ("Pagament a venedor extern")
+                g = Graph()
+                return g.serialize(format='xml'), 200
 
 if __name__ == '__main__':
     # Ponemos en marcha el servidor

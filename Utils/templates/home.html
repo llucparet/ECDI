@@ -30,26 +30,39 @@
         <form action="/historial_comandes" method="get">
             <input type="submit" name="submit" value="Historial de Comandas">
         </form>
-        {% if recomendacion %}
+        {% if products_recomenats %}
         <p>¡Estos son los últimos productos que te recomendamos! ¡Aprovecha!</p>
         <table>
             <tr>
                 <th>NOMBRE</th>
             </tr>
-            {% for p in products %}
+            {% for p in products_recomenats %}
             <tr>
                 <td>{{ p }}</td>
             </tr>
             {% endfor %}
         </table>
         {% endif %}
-        {% if notificacio %}
+        {% if products_enviats %}
         <p>¡Estos son los últimos productos que te recomendamos! ¡Aprovecha!</p>
         <table>
             <tr>
                 <th>Els productes de la seguent llista han sigut enviats i ja esta disponible el seu pagament (pots consultar la data d'entrega a "Historial de Compres"</th>
             </tr>
-            {% for p in products %}
+            {% for p in products_enviats %}
+            <tr>
+                <td>{{ p }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% endif %}
+        {% if products_externs %}
+        <p>¡Estos son los últimos productos que te recomendamos! ¡Aprovecha!</p>
+        <table>
+            <tr>
+                <th>Pots procedir al pagament dels seguents productes externs a "Historial de Compres"</th>
+            </tr>
+            {% for p in products_externs %}
             <tr>
                 <td>{{ p }}</td>
             </tr>
