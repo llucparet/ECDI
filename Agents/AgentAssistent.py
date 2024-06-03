@@ -15,6 +15,7 @@ from Utils.OntoNamespaces import ONTO
 import socket
 from multiprocessing import Queue, Process
 
+
 # Configuración de logging
 logger = config_logger(level=1)
 
@@ -29,14 +30,11 @@ agn = Namespace("http://www.agentes.org#")
 app = Flask(__name__, template_folder='../Utils/templates')
 
 # Agentes del sistema
-AgentAssistent = Agent('AgentAssistent', agn.AgentAssistent, f'http://{hostname}:{port}/comm',
-                       f'http://{hostname}:{port}/Stop')
-ServeiBuscador = Agent('ServeiBuscador', agn.ServeiBuscador, f'http://{hostname}:8003/comm',
-                       f'http://{hostname}:8003/Stop')
-ServeiComandes = Agent('ServeiComandes', agn.ServeiComandes, f'http://{hostname}:8012/comm',
-                       f'http://{hostname}:9012/Stop')
-AgentPagament = Agent('AgentPagament', agn.AgentPagament, f'http://{hostname}:8007/comm',
-                      f'http://{hostname}:8007/Stop')
+AgentAssistent = Agent('AgentAssistent', agn.AgentAssistent, f'http://{hostname}:{port}/comm', f'http://{hostname}:{port}/Stop')
+ServeiBuscador = Agent('ServeiBuscador', agn.ServeiBuscador, f'http://{hostname}:8003/comm', f'http://{hostname}:8003/Stop')
+ServeiComandes = Agent('ServeiComandes', agn.ServeiComandes, f'http://{hostname}:8012/comm', f'http://{hostname}:9012/Stop')
+AgentPagament = Agent('AgentPagament', agn.AgentPagament, f'http://{hostname}:8007/comm', f'http://{hostname}:8007/Stop')
+ServeiEntrega = Agent('ServeiEntrega', agn.ServeiEntrega, f'http://{hostname}:8000/comm', f'http://{hostname}:8000/Stop')
 ServeiClients = Agent('ServeiClients', agn.ServeiClients, f'http://{hostname}:8024/comm',
                       f'http://{hostname}:8024/Stop')
 
@@ -47,18 +45,14 @@ mss_cnt = 0
 productos_recomendados = []
 products_list = []
 DNIusuari = ""
-usuari = ""
+usuari= ""
 completo = False
-
-
 def get_count():
     global mss_cnt
     mss_cnt += 1
     return mss_cnt
 
-
 productes_enviats = []
-
 
 @app.route("/", methods=['GET', 'POST'])
 def initialize():
@@ -68,14 +62,11 @@ def initialize():
             if productes_enviats:
                 aux = productes_enviats
                 productes_enviats = []
-                return render_template('home.html', products=aux, usuario=DNIusuari, recomendacion=False,
-                                       notificacio=True)
+                return render_template('home.html', products=aux, usuario=DNIusuari, recomendacion=False,notificacio=True)
             elif not productos_recomendados:
-                return render_template('home.html', products=None, usuario=DNIusuari, recomendacion=False,
-                                       notificacio=False)
+                return render_template('home.html', products=None, usuario=DNIusuari, recomendacion=False,notificacio=False)
             else:
-                return render_template('home.html', products=productos_recomendados, usuario=DNIusuari,
-                                       recomendacion=True, notificacio=False)
+                return render_template('home.html', products=productos_recomendados, usuario=DNIusuari, recomendacion=True,notificacio=False)
         else:
             return render_template('usuari.html')
     elif request.method == 'POST':
@@ -97,11 +88,10 @@ def initialize():
 
             # Enviamos los datos a Fuseki
             response = requests.post(fuseki_url, data=rdf_xml_data, headers=headers)
-            print(response)
+            print (response)
             return render_template('home.html', products=None, usuario=DNIusuari)
         elif 'submit' in request.form and request.form['submit'] == 'search_products':
             return flask.redirect("http://%s:%d/search_products" % (hostname, port))
-
 
 @app.route("/comm")
 def comunicacion():
@@ -117,7 +107,7 @@ def comunicacion():
     gr = Graph()
     global mss_cnt
     if msgdic is None:
-        mss_cnt += 1
+        mss_cnt+=1
         # Si no es, respondemos que no hemos entendido el mensaje
         gr = build_message(Graph(), ACL['not-understood'], sender=AgentAssistent.uri, msgcnt=str(mss_cnt))
     else:
@@ -137,14 +127,14 @@ def comunicacion():
             print(accion)
             if accion == ONTO.InformarEnviament:
                 logger.info("enviament començat")
-                for s, p, o in gm:
+                for s,p,o in gm:
                     if p == ONTO.Nom:
                         productes_enviats.append(str(o))
 
                 print(productes_enviats)
                 gr.add((accion, RDF.type, ONTO.InformarEnviament))
                 gr.add((accion, ONTO.DNI, Literal(DNIusuari)))
-                return gr.serialize(format="xml"), 200
+                return gr.serialize(format="xml"),200
             """
             if accion == ONTO.ProcesarEnvio:
                 global grafo_respuesta
@@ -181,8 +171,6 @@ def comunicacion():
                 gr = Graph()
                 return gr.serialize(format="xml"),200
 """
-
-
 @app.route("/hacer_pedido", methods=['GET', 'POST'])
 def hacer_pedido():
     global products_list, completo, info_bill
@@ -227,10 +215,11 @@ def realizar_compra(products_to_buy, city, priority, creditCard):
 
     for p in products_to_buy:
         producte = URIRef(p['Producte'])
-        g.add((producte, RDF.type, ONTO.Producte))  # Asumiendo que 'url' es una URI válida para el producto
+        g.add((producte, RDF.type, ONTO.Producte))# Asumiendo que 'url' es una URI válida para el producto
         g.add((producte, ONTO.Nom, Literal(p['Nom'])))
         g.add((producte, ONTO.Preu, Literal(p['Preu'])))
         g.add((producte, ONTO.Pes, Literal(p['Pes'])))
+        g.add((producte, ONTO.Empresa, Literal(p['Empresa'])))
         g.add((action, ONTO.Compra, producte))
     # Send the GET request with a timeout
     msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiComandes.uri, action, mss_cnt)
@@ -268,8 +257,7 @@ def realizar_compra(products_to_buy, city, priority, creditCard):
             sparql.setQuery(sparql_query)
             sparql.setReturnFormat(JSON)
             results = sparql.query().convert()
-            product = {"Nom": results['results']['bindings'][0]['nom']['value'],
-                       "Preu": results['results']['bindings'][0]['preu']['value']}
+            product = {"Nom": results['results']['bindings'][0]['nom']['value'],"Preu": results['results']['bindings'][0]['preu']['value']}
             products.append(product)
     comanda_info['Products'] = products
     return comanda_info
@@ -279,8 +267,7 @@ def realizar_compra(products_to_buy, city, priority, creditCard):
 def search_products():
     global DNIusuari
     if request.method == 'GET':
-        return render_template('busquedaProductes.html', products=None, usuario=DNIusuari, busquedafallida=False,
-                               errorvaloracio=False)
+        return render_template('busquedaProductes.html', products=None, usuario=DNIusuari, busquedafallida=False, errorvaloracio=False)
     else:
         if request.form['submit'] == 'Buscar':
             global products_list
@@ -292,12 +279,10 @@ def search_products():
             Categoria = request.form.get('Categoria')
             products_list = buscar_productos(Nom, PreuMin, PreuMax, Marca, Valoracio, Categoria)
             if len(products_list) == 0:
-                return render_template('busquedaProductes.html', products=None, usuario=DNIusuari, busquedafallida=True,
-                                       errorvaloracio=False)
+                return render_template('busquedaProductes.html', products=None, usuario=DNIusuari, busquedafallida=True, errorvaloracio=False)
             elif Valoracio != "":
                 if str(Valoracio) < str(0) or str(Valoracio) > str(5):
-                    return render_template('busquedaProductes.html', products=None, usuario=DNIusuari,
-                                           busquedafallida=False, errorvaloracio=True)
+                    return render_template('busquedaProductes.html', products=None, usuario=DNIusuari, busquedafallida=False, errorvaloracio=True)
                 else:
                     return flask.redirect("http://%s:%d/hacer_pedido" % (hostname, port))
             else:
@@ -347,8 +332,7 @@ def buscar_productos(Nom=None, PreuMin=0.0, PreuMax=10000.0, Marca=None, Valorac
         g.add((categoryRestriction, ONTO.Categoria, Literal(Categoria)))
         g.add((action, ONTO.Restriccions, URIRef(categoryRestriction)))
 
-    print(
-        f'Buscando productos con las siguientes restricciones: {Nom}, {PreuMin}, {PreuMax}, {Marca}, {Valoracio}, {Categoria}')
+    print(f'Buscando productos con las siguientes restricciones: {Nom}, {PreuMin}, {PreuMax}, {Marca}, {Valoracio}, {Categoria}')
     msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiBuscador.uri, action, mss_cnt)
     print(f'Mensaje construido: {msg}')
     mss_cnt += 1
@@ -383,6 +367,8 @@ def buscar_productos(Nom=None, PreuMin=0.0, PreuMax=10000.0, Marca=None, Valorac
                     product["Valoracio"] = o
                 if p == ONTO.Categoria:
                     product["Categoria"] = o
+                if p == ONTO.Empresa:
+                    product["Empresa"] = o
         logger.info(f'Productos recibidos: {products_list}')
         return products_list
     except Exception as e:
@@ -396,7 +382,6 @@ def historial_comandes():
     comandas = consultar_comandas(DNIusuari)
     print(comandas)
     return render_template('historial_comandes.html', comandas=comandas)
-
 
 @app.route("/comanda/<comanda_id>", methods=['GET'])
 def ver_comanda(comanda_id):
@@ -456,7 +441,7 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
 
-    SELECT ?producte_comanda ?nom ?preu ?data ?pagado ?enviat ?transportista
+    SELECT ?producte_comanda ?nom ?preu ?data ?pagado ?enviat ?transportista ?empresa
     WHERE {{
         <{comanda_uri}> ont:ProductesComanda ?producte_comanda .
         ?producte_comanda rdf:type ont:ProducteComanda .
@@ -466,6 +451,7 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
         ?producte_comanda ont:Pagat ?pagado .
         ?producte_comanda ont:Enviat ?enviat .
         ?producte_comanda ont:TransportistaProducte ?transportista .
+        ?producte_comanda ont:Empresa ?empresa .
     }}
     ORDER BY ?producte_comanda
     """
@@ -483,9 +469,10 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
             "Data": result["data"]["value"][:10],
             "Pagado": result["pagado"]["value"],
             "Enviado": result["enviat"]["value"],
-            "Transportista": result["transportista"]["value"]
+            "Transportista": result["transportista"]["value"],
+            "Empresa": result["empresa"]["value"]
         }
-        print(producte)
+        print (producte)
         products.append(producte)
 
     # Implementar paginación
@@ -521,19 +508,25 @@ def valorar_producte(comanda_id, producte_nom):
 
 @app.route("/pagar/<comanda_id>/<producte_nom>", methods=['GET'])
 def pagar_producte(producte_nom, comanda_id):
+    preu = request.args.get('preu', default=0.0, type=float)
+    empresa = request.args.get('empresa', default='ECDI', type=str)
     g = Graph()
-    action = ONTO['CobrarProductes' + str(get_count())]
+    action = ONTO['CobrarProductes_' + str(get_count())]
     g.add((action, RDF.type, ONTO.CobrarProductes))
     g.add((action, ONTO.DNI, Literal(DNIusuari)))
     g.add((action, ONTO.Nom, Literal(producte_nom)))
     g.add((action, ONTO.Comanda, Literal(comanda_id)))
-    msg = build_message(g, ACL.request, AgentAssistent.uri, AgentPagament.uri, action, get_count())
+    g.add((action, ONTO.Preu, Literal(preu)))
+    g.add((action, ONTO.Empresa, Literal(empresa)))
+    msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiEntrega.uri, action, get_count())
 
-    gproducts = send_message(msg, AgentPagament.address)
+    gproducts = send_message(msg, ServeiEntrega.address)
+
+    if producte_nom in productes_enviats:
+        productes_enviats.remove(producte_nom)
     return redirect(url_for('ver_comanda', comanda_id=comanda_id), code=302)
 
-
-def agentbehavior1(queue):
+def treure_producte_llista_enviats(queue):
     """
     Un comportamiento del agente
 

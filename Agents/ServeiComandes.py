@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import socket
+import time
 from datetime import datetime
 from multiprocessing import Queue, Process
 
@@ -59,6 +60,8 @@ cola1 = Queue()
 app = Flask(__name__)
 
 
+
+
 productes_centre1 = []
 productes_centre2 = []
 productes_centre3 = []
@@ -71,33 +74,58 @@ def get_count():
     return mss_cnt
 
 
-def obtener_coordenadas(ciudad):
+def obtener_coordenadas(ciudad, retries=3, delay=2):
     """
     Obtiene las coordenadas (latitud y longitud) de una ciudad utilizando el servicio Nominatim de OpenStreetMap.
+    Reintenta la solicitud en caso de fallo hasta 'retries' veces con un retraso de 'delay' segundos entre intentos.
     """
     geolocator = Nominatim(user_agent="myapplication")
-    location = geolocator.geocode(ciudad)
-    if location:
-        return (location.latitude, location.longitude)
-    else:
-        return None
+    attempt = 0
+
+    while attempt < retries:
+        try:
+            location = geolocator.geocode(ciudad, timeout=10)
+            if location:
+                return (location.latitude, location.longitude)
+            else:
+                return None
+        except Exception as e:
+            print(f"Error obteniendo coordenadas de {ciudad}: {e}")
+            attempt += 1
+            time.sleep(delay)
+
+    return None
 
 
-def centro_logistico_mas_cercano(ciudades_centros, ciudad_destino):
+def centro_logistico_mas_cercano(ciudades_centros, coordenadas_destino):
     """
     Encuentra el centro logístico más cercano a la ciudad de destino.
     """
-    coordenadas_destino = obtener_coordenadas(ciudad_destino)
 
     if not coordenadas_destino:
-        print(f"No se pudieron obtener las coordenadas de la ciudad destino: {ciudad_destino}")
+        print(f"No se pudieron obtener las coordenadas de la ciudad destino:")
         return None
 
     distancia_minima = float('inf')
     centro_mas_cercano = None
 
     for ciudad_centro in ciudades_centros:
-        coordenadas_centro = obtener_coordenadas(ciudad_centro)
+        location_bany = (42.1167, 2.7667)
+        location_bcn = (41.3825, 2.1769)
+        location_ta = (41.1189, 1.2445)
+        location_val = (39.4699, -0.3763)
+        location_zar = (41.6488, -0.8891)
+        if ciudad_centro == "Banyoles":
+            coordenadas_centro = location_bany
+        elif ciudad_centro == "Barcelona":
+            coordenadas_centro = location_bcn
+        elif ciudad_centro == "Tarragona":
+            coordenadas_centro = location_ta
+        elif ciudad_centro == "Valencia":
+            coordenadas_centro = location_val
+        elif ciudad_centro == "Zaragoza":
+           coordenadas_centro = location_zar
+
         if coordenadas_centro:
             distancia = geodesic(coordenadas_destino, coordenadas_centro).kilometers
             if distancia < distancia_minima:
@@ -133,6 +161,7 @@ def registrar_comanda(id, ciutat, client, preu_total, prioritat, credit_card, pr
         g_comanda.add((producte_comanda_uri, ONTO.Enviat, Literal(producte.get('Enviat', False), datatype=XSD.boolean)))
         g_comanda.add((producte_comanda_uri, ONTO.TransportistaProducte,
                        Literal(producte.get('Transportista', ""), datatype=XSD.string)))
+        g_comanda.add((producte_comanda_uri, ONTO.Empresa, Literal(producte['Empresa'], datatype=XSD.string)))
         g_comanda.add((comanda, ONTO.ProductesComanda, producte_comanda_uri))
 
     # Serializar el grafo a formato RDF/XML
@@ -191,6 +220,7 @@ def communication():
 
             accion = gm.value(subject=content, predicate=RDF.type)
             llista_productes = []
+            llista_productes_externs = []
             print(accion)
             # Accion de hacer pedido
             if accion == ONTO.ComprarProductes:
@@ -222,22 +252,37 @@ def communication():
                         gr.add((comanda, ONTO.DNI, Literal(o)))
                         dni = o
                     if p == ONTO.Compra:
-                        llista_productes.append(o)
+                        empresa = str(gm.value(o, ONTO.Empresa))
+                        if empresa == "ECDI":
+                            llista_productes.append(o)
+                        else:
+                            producte_extern = {
+                                'ID': o.split("/")[-1],
+                                'Nom': str(gm.value(o, ONTO.Nom)),
+                                'Preu': float(gm.value(o, ONTO.Preu)),
+                                'DataEntrega': datetime(1970, 1, 1).date(),
+                                'Pagat': False,
+                                'Enviat': False,
+                                'Transportista': "",
+                                'Empresa': empresa
+                            }
+                            llista_productes_externs.append(producte_extern)
+
                         gr.add((comanda, ONTO.ProductesComanda, o))
                         preu = float(gm.value(o, ONTO.Preu))
                         preu_total += preu
 
                 ab1 = Process(target=agentbehavior1,
-                              args=(cola1, comanda_id, llista_productes, ciutat, priority, creditcard, dni,comanda, gm))
+                              args=(cola1, comanda_id, llista_productes, llista_productes_externs, ciutat, priority, creditcard, dni,comanda, gm,preu_total))
                 ab1.start()
                 print(preu_total)
                 gr.add((comanda, ONTO.PreuTotal, Literal(preu_total, datatype=XSD.float)))
                 return gr.serialize(format='xml'), 200
 
 
-def agentbehavior1(cola, comanda_id, llista_productes, ciutat, priority, creditcard, dni,comanda, gm):
-    preu_total = 0
+def agentbehavior1(cola, comanda_id, llista_productes,llista_productes_externs, ciutat, priority, creditcard, dni,comanda, gm,preu_total):
     products = []
+    coordenadas_destino = obtener_coordenadas(ciutat)
     for producte in llista_productes:
         preu = float(gm.value(producte, ONTO.Preu))
         nom = str(gm.value(producte, ONTO.Nom))
@@ -249,7 +294,6 @@ def agentbehavior1(cola, comanda_id, llista_productes, ciutat, priority, creditc
         # La fecha de entrega no se debe leer de los datos RDF, la inicializamos a una fecha por defecto
         data_entrega = datetime(1970, 1, 1).date()
 
-        preu_total += preu
         products.append({
             'ID': producte.split("/")[-1],
             'Nom': nom,
@@ -257,7 +301,8 @@ def agentbehavior1(cola, comanda_id, llista_productes, ciutat, priority, creditc
             'DataEntrega': data_entrega,
             'Pagat': pagat,
             'Enviat': enviat,
-            'Transportista': transportista
+            'Transportista': transportista,
+            'Empresa': 'ECDI'
         })
 
         value = "".join(f"<{producte}> ")
@@ -284,7 +329,7 @@ def agentbehavior1(cola, comanda_id, llista_productes, ciutat, priority, creditc
         centres_logistics = []
         for result in results["results"]["bindings"]:
             centres_logistics.append(result["ciutat"]["value"])
-        city = centro_logistico_mas_cercano(centres_logistics, ciutat)
+        city = centro_logistico_mas_cercano(centres_logistics, coordenadas_destino)
         if city == "Banyoles":
             productes_centre1.append(producte)
         elif city == "Barcelona":
@@ -321,6 +366,8 @@ def agentbehavior1(cola, comanda_id, llista_productes, ciutat, priority, creditc
     client_result = results["results"]["bindings"][0]
     client = client_result["client"]["value"]
     print(client)
+
+    products.extend(llista_productes_externs)
 
     registrar_comanda(comanda_id, ciutat, client, preu_total, priority, creditcard, products)
 

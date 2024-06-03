@@ -36,18 +36,8 @@ AgentAssistent = Agent('AgentAssistent',
                        agn.AgentAssistent,
                        'http://%s:9011/comm' % hostname,
                        'http://%s:9011/Stop' % hostname)
-AgentPagaments = Agent('AgentPagaments',
-                       agn.AgentPagaments,
-                       'http://%s:8001/comm' % hostname,
-                       'http://%s:8001/Stop' % hostname)
-def asignar_port_centre_logistic(port):
-    portcentrelogistic = port
-    ServeiCentreLogistic = Agent('ServeiCentreLogistic',
-                                 agn.ServeiCentreLogistic,
-                                 'http://%s:%d/comm' % (hostname, portcentrelogistic),
-                                 'http://%s:%d/Stop' % (hostname, portcentrelogistic))
-    return ServeiCentreLogistic
 
+AgentPagament = Agent('AgentPagament', agn.AgentPagament, f'http://{hostname}:8007/comm', f'http://{hostname}:8007/Stop')
 
 # Global triplestore graph
 dsgraph = Graph()
@@ -209,18 +199,69 @@ def communication():
                 resposta = send_message(msg, AgentAssistent.address)
                 return gg.serialize(format="xml"),200
 
-                """
-                acction = ONTO["CobrarProductes_"+ str(count)]
-                gm.add((accion, RDF.type, acction))
-                msg = build_message(gr, ACL.request, ServeiEntrega.uri, AgentPagaments.uri, acction,
-                                    get_count())
-                resposta = send_message(msg, AgentPagaments.address)
-                """
-                #aqui guardo que ha fet el pagament
+            elif accion == ONTO.CobrarProductes:
+                print("Cobrar productes")
+                dni = ""
+                comanda = ""
+                nom_producte = ""
+                preu = ""
+                empresa = ""
+                g = Graph()
+                action = ONTO['CobrarProductes_' + str(get_count())]
+                g.add((action, RDF.type, ONTO.CobrarProductes))
 
+                for s, p, o in gm:
+                    if p == ONTO.DNI:
+                        dni = o
+                        g.add((action, ONTO.DNI, o))
+                    elif p == ONTO.Comanda:
+                        comanda = o
+                        g.add((action, ONTO.Comanda, o))
+                    elif p == ONTO.Nom:
+                        nom_producte = o
+                        g.add((action, ONTO.Nom, o))
+                    elif p == ONTO.Preu:
+                        preu = o
+                        g.add((action, ONTO.Preu, o))
+                    elif p == ONTO.Empresa:
+                        empresa = o
+                        g.add((action, ONTO.Empresa, o))
+                print(dni)
+                print(comanda)
+                print(nom_producte)
+                print(preu)
+                registrar_transaccio(dni,empresa, nom_producte, preu)
+                msg = build_message(g, ACL.request, ServeiEntrega.uri, AgentPagament.uri, action, get_count())
 
+                gproducts = send_message(msg, AgentPagament.address)
 
+                return gproducts.serialize(format="xml"), 200
+def registrar_transaccio(pagador,cobrador,producte,preu):
+    g = Graph()
+    accio = ONTO['Transaccio_' + str(get_count())]
+    g.add((accio, RDF.type, ONTO.Transaccio))
+    g.add((accio, ONTO.Pagador, Literal(pagador)))
+    g.add((accio, ONTO.Cobrador, Literal(cobrador)))
+    g.add((accio, ONTO.Producte, Literal(producte)))
+    g.add((accio, ONTO.Preu, Literal(preu)))
 
+    # Serializar el grafo a formato RDF/XML
+    rdf_xml_data_comanda = g.serialize(format='xml')
+    fuseki_url = 'http://localhost:3030/ONTO/data'  # Asegúrate de tener la URL correcta
+
+    # Cabeceras para la solicitud
+    headers = {
+        'Content-Type': 'application/rdf+xml'
+    }
+
+    # Enviamos los datos a Fuseki
+    response = requests.post(fuseki_url, data=rdf_xml_data_comanda, headers=headers)
+
+    # Verificamos la respuesta
+    if response.status_code == 200:
+        print('transaccio registrada exitosamente en Fuseki')
+    else:
+        print(f'Error al registrar la transaccio en Fuseki: {response.status_code} - {response.text}')
 
 
 if __name__ == '__main__':

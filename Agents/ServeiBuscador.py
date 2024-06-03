@@ -5,7 +5,7 @@ from flask import Flask, request
 from rdflib import Graph, RDF, Namespace, Literal, URIRef
 from multiprocessing import Queue, Process
 
-from Agents.AgentAssistent import agentbehavior1, cola1
+from Agents.AgentAssistent import cola1
 from Utils.ACL import ACL
 from Utils.ACLMessages import build_message, get_message_properties
 from Utils.Agent import Agent
@@ -81,11 +81,13 @@ def buscar_productos(**filters):
         conditions.append(f"?preu >= {preuMin} && ?preu <= {preuMax}")
 
     where_clause = " && ".join(conditions)
+    if not where_clause:
+        where_clause = "?marca && ?nom && ?pes && ?preu && ?marca && ?valoracio && ?categoria && ?empresa"
     query = f"""
         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         PREFIX ex: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
 
-        SELECT ?producte ?nom ?pes ?preu ?marca ?valoracio ?categoria
+        SELECT ?producte ?nom ?pes ?preu ?marca ?valoracio ?categoria ?empresa
         WHERE {{
             ?producte rdf:type ex:Producte .
             OPTIONAL {{ ?producte ex:Nom ?nom . }}
@@ -94,6 +96,7 @@ def buscar_productos(**filters):
             OPTIONAL {{ ?producte ex:Marca ?marca . }}
             OPTIONAL {{ ?producte ex:Valoracio ?valoracio . }}
             OPTIONAL {{ ?producte ex:Categoria ?categoria . }}
+            OPTIONAL {{ ?producte ex:Empresa ?empresa . }}
             FILTER ({where_clause})
         }}
     """
@@ -106,7 +109,7 @@ def buscar_productos(**filters):
         for result in results["results"]["bindings"]:
             producte = URIRef(result["producte"]["value"])
             graph.add((producte, RDF.type, ONTO.Producte))
-            for attr in ['nom', 'pes', 'preu', 'marca', 'valoracio', 'categoria']:
+            for attr in ['nom', 'pes', 'preu', 'marca', 'valoracio', 'categoria', 'empresa']:
                 if attr in result:
                     graph.add((producte, ONTO[attr.capitalize()], Literal(result[attr]["value"])))
         return graph
@@ -125,12 +128,11 @@ def tidyup():
 
 if __name__ == '__main__':
     # Ponemos en marcha los behaviors
-    ab1 = Process(target=agentbehavior1, args=(cola1,))
-    ab1.start()
+
 
     # Ponemos en marcha el servidor
     app.run(host=hostname, port=port)
 
     # Esperamos a que acaben los behaviors
-    ab1.join()
+
     print('The End')
