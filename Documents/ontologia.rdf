@@ -1,0 +1,839 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.semanticweb.org/nilde/ontologies/2024/4/amazon"
+     xml:base="http://www.semanticweb.org/nilde/ontologies/2024/4/amazon"
+     xmlns:dc="http://purl.org/dc/elements/1.1/"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:schema="http://schema.org/"
+     xmlns:ontologies="http://www.semanticweb.org/nilde/ontologies/2024/4/">
+    <owl:Ontology rdf:about="http://www.semanticweb.org/ecsdi/ontologies/2024/4/amazon">
+        <dc:creator>Nil del Pozo Comas, Adrià Barragán Redondo, Lluc Paret Aguer</dc:creator>
+        <dc:date rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">2024-05-09T12:00:00-05:00</dc:date>
+        <dc:title>Ontologia ECSDI</dc:title>
+        <schema:image rdf:resource="https://i.pinimg.com/originals/e2/88/67/e288671b02ab6126c3ae10e3726c3a15.png"/>
+        <rdfs:comment>Es defineix la ontologia de la pràctica realitzada a l&apos;assignatura de ECSDI al Quatrimestre de Primavera 2023/2024</rdfs:comment>
+    </owl:Ontology>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.org/dc/elements/1.1/creator -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/creator"/>
+    
+
+
+    <!-- http://purl.org/dc/elements/1.1/date -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/date"/>
+    
+
+
+    <!-- http://purl.org/dc/elements/1.1/title -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.org/dc/elements/1.1/title"/>
+    
+
+
+    <!-- http://schema.org/image -->
+
+    <owl:AnnotationProperty rdf:about="http://schema.org/image"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.semanticweb.org/ecsdi/ontologies/2024/4/ComandaLot -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/ecsdi/ontologies/2024/4/ComandaLot">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Lot"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Comanda"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/ecsdi/ontologies/2024/4/ProductesCentreLogistic -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/ecsdi/ontologies/2024/4/ProductesCentreLogistic">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/CentreLogistic"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Producte"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/ecsdi/ontologies/2024/4/amazon#TransportistaProducte -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/ecsdi/ontologies/2024/4/amazon#TransportistaProducte">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/ecsdi/ontologies/2024/4/amazon#ProducteComanda"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Transportista"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Afegeix -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Afegeix">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/AfegirProducteExtern"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Producte"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/AssignaLot -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/AssignaLot">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/AssignarTransportista"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Lot"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Busca -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Busca">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/BuscarProductes"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Restriccions"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/ClientComanda -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/ClientComanda">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Comanda"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Client"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/ComandaRespostaTemptativa -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/ComandaRespostaTemptativa">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/RespostaTemptativa"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Comanda"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Compra -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Compra">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/ComprarProductes"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Producte"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/EnviaCondicions -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/EnviaCondicions">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/EnviarCondicionsEnviament"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Lot"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/EnviaContraoferta -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/EnviaContraoferta">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/EnviarContraoferta"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Lot"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/EnviaRespostaTemptativa -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/EnviaRespostaTemptativa">
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/RespostaTemptativa"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/InformaLot -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/InformaLot">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/InformarEnviament"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Lot"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Processa -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Processa">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/ProcessarEnviament"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Comanda"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/ProductesComanda -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/ProductesComanda">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Comanda"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/ecsdi/ontologies/2024/4/amazon#ProducteComanda"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/ProductesLot -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/ProductesLot">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Lot"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Producte"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/ProductesVenedorExtern -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/ProductesVenedorExtern">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/VenedorExtern"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Producte"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/RetornaProducte -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/RetornaProducte">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/RetornarProducte"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Producte"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/RetornaProducteDeComanda -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/RetornaProducteDeComanda">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/RetornarProducte"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Comanda"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/TransportistaLot -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/TransportistaLot">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Lot"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Transportista"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Valora -->
+
+    <owl:ObjectProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Valora">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/ValorarProducte"/>
+        <rdfs:range rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Producte"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Data properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.semanticweb.org/ecsdi/ontologies/2024/4/Enviat -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/ecsdi/ontologies/2024/4/Enviat">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/ecsdi/ontologies/2024/4/amazon#ProducteComanda"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#boolean"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/ecsdi/ontologies/2024/4/Retornat -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/ecsdi/ontologies/2024/4/Retornat">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/ecsdi/ontologies/2024/4/amazon#ProducteComanda"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#boolean"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/ecsdi/ontologies/2024/4/amazon#Pagat -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/ecsdi/ontologies/2024/4/amazon#Pagat">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/ecsdi/ontologies/2024/4/amazon#ProducteComanda"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#boolean"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Categoria -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Categoria">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/ecsdi/ontologies/2024/4/amazon#RestriccioCategoria"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Producte"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Ciutat -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Ciutat">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/CentreLogistic"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Comanda"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/ComprarProductes"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Lot"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/RespostaTemptativa"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/CompteBancari -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/CompteBancari">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Comanda"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/VenedorExtern"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/DNI -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/DNI">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Client"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Data -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Data">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/ecsdi/ontologies/2024/4/amazon#ProducteComanda"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Comanda"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/RespostaTemptativa"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#dateTime"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/ID -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/ID">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/CentreLogistic"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Comanda"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Lot"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Producte"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/RespostaTemptativa"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Transportista"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Marca -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Marca">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Producte"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/RestriccioMarca"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Marge -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Marge">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Transportista"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#float"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Nom -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Nom">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/ecsdi/ontologies/2024/4/amazon#ProducteComanda"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Producte"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/RestriccioNom"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Transportista"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/VenedorExtern"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Pes -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Pes">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Lot"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Producte"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#float"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Preu -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Preu">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/ecsdi/ontologies/2024/4/amazon#ProducteComanda"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Producte"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#float"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/PreuKg -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/PreuKg">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Transportista"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#float"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/PreuKm -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/PreuKm">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Transportista"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#float"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/PreuMax -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/PreuMax">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/RestriccioPreu"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#float"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/PreuMin -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/PreuMin">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/RestriccioPreu"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#float"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/PreuTotal -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/PreuTotal">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Comanda"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/RespostaTemptativa"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#float"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Prioritat -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Prioritat">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Comanda"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/ComprarProductes"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Lot"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#int"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/TargetaCredit -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/TargetaCredit">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Comanda"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Valoracio -->
+
+    <owl:DatatypeProperty rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Valoracio">
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Producte"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/RestriccioValoracio"/>
+        <rdfs:domain rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/ValorarProducte"/>
+        <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#float"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.semanticweb.org/ecsdi/ontologies/2024/4/EliminarProducteExtern -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/ecsdi/ontologies/2024/4/EliminarProducteExtern">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Accio"/>
+        <rdfs:comment>Aquesta classe representa la acció d&apos;eliminar un producte del venedor extern al catàleg de productes oferts.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/ecsdi/ontologies/2024/4/RecomanarProducte -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/ecsdi/ontologies/2024/4/RecomanarProducte">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Accio"/>
+        <rdfs:comment>Aquesta acció representa l&apos;acció de rebre una recomanació de productes per part del sistema</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/ecsdi/ontologies/2024/4/RestriccioCategoria -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/ecsdi/ontologies/2024/4/RestriccioCategoria">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Restriccions"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/ecsdi/ontologies/2024/4/amazon#ProducteComanda -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/ecsdi/ontologies/2024/4/amazon#ProducteComanda"/>
+    
+
+
+    <!-- http://www.semanticweb.org/ecsdi/ontologies/2024/4/amazon#RestriccioCategoria -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/ecsdi/ontologies/2024/4/amazon#RestriccioCategoria"/>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Accio -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Accio"/>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/AfegirProducteExtern -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/AfegirProducteExtern">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Accio"/>
+        <rdfs:comment>Aquesta classe representa la acció d&apos;afegir un producte del venedor extern al catàleg de productes oferts.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/AssignarTransportista -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/AssignarTransportista">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/ProcessarEnviament"/>
+        <rdfs:comment>Aquesta classe representa l&apos;acció d&apos;assignar un transportista al lot que cal enviar. També s&apos;informa al transportista de la assignació</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/BuscarProductes -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/BuscarProductes">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Accio"/>
+        <rdfs:comment>Aquesta classe representa l&apos;acció de buscar productes</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/CentreLogistic -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/CentreLogistic">
+        <rdfs:comment>Aquesta classe representa un centre logístic de la nostra xarxa de centres. Actua com si fos un magatzem que conté productes oferts per la propia empresa. En els centres logístics hi trobem agents que actuen de forma distribuida i s&apos;encarreguen de la entrega dels productes distribuits en lots.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Client -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Client">
+        <rdfs:comment>Aquesta classe l&apos;agent assistent d&apos;un usuari de la aplicació. Aquesta classe serà la principal amb la qual el sistema interactuarà.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/CobrarProductes -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/CobrarProductes">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/ProcessarEnviament"/>
+        <rdfs:comment>Aquesta classe representa l&apos;acció de cobrar al client els productes del lot que s&apos;ha assignat a un transportista per entregar</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/CobrarProductesVenedorExtern -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/CobrarProductesVenedorExtern">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Accio"/>
+        <rdfs:comment>Aquesta classe representa la acció de cobrar al client el conjunt de productes que hagi encarregat que siguin d&apos;un venedor extern. Es realitza aquet cobrament en el moment de realitzar la compra, la resta de productes es cobraràn quan s&apos;assigni un transportista.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Comanda -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Comanda">
+        <rdfs:comment>Aquesta classe representa una compra realitzada per un client i conté una serie de productes agrupats a través d&apos;unes restriccions. 
+Quan una comanda s&apos;ha de subdividir per repartir-la en diversos centres logístics (Ex: baguette només en té el CL de París, frankfurt el de Munich) es creen subcomandes. Fem servir la mateixa classe Comanda per representar les subcomandes.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/ComprarProductes -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/ComprarProductes">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Accio"/>
+        <rdfs:comment>Aquesta classe representa la acció de fer una comanda.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/EnviarCondicionsEnviament -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/EnviarCondicionsEnviament">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/ProcessarEnviament"/>
+        <rdfs:comment>Aquesta classe representa la acció de enviar les condicions de la entrega d&apos;un lot a un transportista. S&apos;espera que la resposta del transportista sigui el preu que està disposat a cobrar per l&apos;encarrec o una negativa. Posteriorment es negocia amb contraofertes.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/EnviarContraoferta -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/EnviarContraoferta">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/ProcessarEnviament"/>
+        <rdfs:comment>Aquesta classe representa l&apos;acció d&apos;enviar una contraoferta a un transportista respecte a la oferta inicial que ens ha realitzat. S&apos;espera una resposta amb confirmació de la contraoferta o amb un nou import que està diposat a cobrar per l&apos;encarrec.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/InformarEnviament -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/InformarEnviament">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/ProcessarEnviament"/>
+        <rdfs:comment>Aquesta classe representa l&apos;acció d&apos;informar al client amb la data final d&apos;entrega d&apos;un producte un cop ja ha estat assignada.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Lot -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Lot">
+        <rdfs:comment>Aquesta classe representa una agrupació de subcomandes (productes) realitzada a un centre logístic per a ser repartit per un transportista.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/PagarUsuari -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/PagarUsuari">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/RetornarProducte"/>
+        <rdfs:comment>Aquesta classe representa l&apos;acció de pagar a l&apos;usuari l&apos;import del producte retornat si la resolució ha estat positiva</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/PagarVenedorExtern -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/PagarVenedorExtern">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/CobrarProductesVenedorExtern"/>
+        <rdfs:comment>Aquesta classe representa la acció de pagar a un venedor extern pels productes que ha comprat un client</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/ProcessarEnviament -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/ProcessarEnviament">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Accio"/>
+        <rdfs:comment>Aquesta classe representa la acció de processar l&apos;enviament dels productes de la comanda que ha encarregat el client.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Producte -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Producte">
+        <rdfs:comment>Aquesta classe representa un be ofert a la nostra botiga virtual.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/RespostaTemptativa -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/RespostaTemptativa">
+        <rdfs:comment>Aquesta classe representa la primera factura que s&apos;entrega al client al moment de realitzar la compra. Es retorna informació bàsica sobre la compra i una aproximació de temps d&apos;entrega.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/RestriccioMarca -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/RestriccioMarca">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Restriccions"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/RestriccioNom -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/RestriccioNom">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Restriccions"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/RestriccioPreu -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/RestriccioPreu">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Restriccions"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/RestriccioValoracio -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/RestriccioValoracio">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Restriccions"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Restriccions -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Restriccions">
+        <rdfs:comment>Aquesta classe representa les diferents restriccions que tenen les busquedes realitzades pel client a través de l&apos;Agent assistent.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/RetornarProducte -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/RetornarProducte">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Accio"/>
+        <rdfs:comment>Aquesta classe representa l&apos;acció de retornar un producte.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/Transportista -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/Transportista">
+        <rdfs:comment>Aquesta classe representa una empresa de transport a la que es contacta per contractar serveis de entrega de Lots.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/ValorarProducte -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/ValorarProducte">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/Accio"/>
+        <rdfs:comment>Aquesta classe representa l&apos;acció de valorar un producte que previament s&apos;ha comprat.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/nilde/ontologies/2024/4/VenedorExtern -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/nilde/ontologies/2024/4/VenedorExtern">
+        <rdfs:comment>Aquesta classe representa una botiga/empresa externa que ven productes a traves de la nostra botiga virtual.</rdfs:comment>
+    </owl:Class>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Individuals
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.semanticweb.org/ecsdi/ontologies/2024/4/Banyoles -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/ecsdi/ontologies/2024/4/Banyoles">
+        <rdf:type rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/CentreLogistic"/>
+        <ontologies:Ciutat>Banyoles</ontologies:Ciutat>
+        <ontologies:ID rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">4</ontologies:ID>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/ecsdi/ontologies/2024/4/Barcelona -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/ecsdi/ontologies/2024/4/Barcelona">
+        <rdf:type rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/CentreLogistic"/>
+        <ontologies:Ciutat>Barcelona</ontologies:Ciutat>
+        <ontologies:ID rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">1</ontologies:ID>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/ecsdi/ontologies/2024/4/Tarragona -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/ecsdi/ontologies/2024/4/Tarragona">
+        <rdf:type rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/CentreLogistic"/>
+        <ontologies:Ciutat>Tarragona</ontologies:Ciutat>
+        <ontologies:ID rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">5</ontologies:ID>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/ecsdi/ontologies/2024/4/Valencia -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/ecsdi/ontologies/2024/4/Valencia">
+        <rdf:type rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/CentreLogistic"/>
+        <ontologies:Ciutat>Valencia</ontologies:Ciutat>
+        <ontologies:ID rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">2</ontologies:ID>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/ecsdi/ontologies/2024/4/Zaragoza -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/ecsdi/ontologies/2024/4/Zaragoza">
+        <rdf:type rdf:resource="http://www.semanticweb.org/nilde/ontologies/2024/4/CentreLogistic"/>
+        <ontologies:Ciutat>Zaragoza</ontologies:Ciutat>
+        <ontologies:ID rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">3</ontologies:ID>
+    </owl:NamedIndividual>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 4.5.26.2023-07-17T20:34:13Z) https://github.com/owlcs/owlapi -->
+
