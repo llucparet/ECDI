@@ -270,7 +270,9 @@ def communication():
                 for s, p, o in gm:
                     if p == ONTO.Lot:
                         lot = str(o)
-                logger.info("El transportista " + " ha recogido el paquete " + lot)
+                    elif p == ONTO.Nom:
+                        nom = str(o)
+                logger.info(f"El transportista {nom} " + " ha recogido el paquete " + lot)
                 g = Graph()
                 return g.serialize(format='xml'), 200
 

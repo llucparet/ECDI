@@ -33,11 +33,12 @@ AgentAssistent = Agent('AgentAssistent', agn.AgentAssistent, f'http://{hostname}
 ServeiBuscador = Agent('ServeiBuscador', agn.ServeiBuscador, f'http://{hostname}:8003/comm',
                        f'http://{hostname}:8003/Stop')
 ServeiComandes = Agent('ServeiComandes', agn.ServeiComandes, f'http://{hostname}:8012/comm',
-                       f'http://{hostname}:9012/Stop')
+                       f'http://{hostname}:8012/Stop')
 AgentPagament = Agent('AgentPagament', agn.AgentPagament, f'http://{hostname}:8007/comm',
                       f'http://{hostname}:8007/Stop')
 ServeiRetornador = Agent('ServeiRetornador', agn.ServeiRetornador, f'http://{hostname}:8030/comm',
                          f'http://{hostname}:8030/Stop')
+ServeiEntrega = Agent('ServeiEntrega', agn.ServeiEntrega, f'http://{hostname}:8000/comm', f'http://{hostname}:8000/Stop')
 
 cola1 = Queue()
 
@@ -230,6 +231,7 @@ def realizar_compra(products_to_buy, city, priority, creditCard):
         g.add((producte, ONTO.Nom, Literal(p['Nom'])))
         g.add((producte, ONTO.Preu, Literal(p['Preu'])))
         g.add((producte, ONTO.Pes, Literal(p['Pes'])))
+        g.add((producte, ONTO.Empresa, Literal(p['Empresa'])))
         g.add((action, ONTO.Compra, producte))
     # Send the GET request with a timeout
     msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiComandes.uri, action, mss_cnt)
@@ -382,6 +384,8 @@ def buscar_productos(Nom=None, PreuMin=0.0, PreuMax=10000.0, Marca=None, Valorac
                     product["Valoracio"] = o
                 if p == ONTO.Categoria:
                     product["Categoria"] = o
+                if p == ONTO.Empresa:
+                    product["Empresa"] = o
         logger.info(f'Productos recibidos: {products_list}')
         return products_list
     except Exception as e:
@@ -455,7 +459,7 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
 
-    SELECT ?producte_comanda ?nom ?preu ?data ?pagado ?enviat ?transportista ?retornat
+    SELECT ?producte_comanda ?nom ?preu ?data ?pagado ?enviat ?transportista ?retornat ?empresa
     WHERE {{
         <{comanda_uri}> ont:ProductesComanda ?producte_comanda .
         ?producte_comanda rdf:type ont:ProducteComanda .
@@ -466,6 +470,7 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
         ?producte_comanda ont:Enviat ?enviat .
         ?producte_comanda ont:TransportistaProducte ?transportista .
         ?producte_comanda ont:Retornat ?retornat .
+        ?producte_comanda ont:Empresa ?empresa .
     }}
     ORDER BY ?producte_comanda
     """
@@ -484,7 +489,8 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
             "Pagado": result["pagado"]["value"],
             "Enviado": result["enviat"]["value"],
             "Transportista": result["transportista"]["value"],
-            "Retornat": result["retornat"]["value"]
+            "Retornat": result["retornat"]["value"],
+            "Empresa": result["empresa"]["value"]
         }
         print(producte)
         products.append(producte)
@@ -506,15 +512,22 @@ def consultar_productes_comanda(comanda_id, page, products_per_page):
 
 @app.route("/pagar/<comanda_id>/<producte_nom>", methods=['GET'])
 def pagar_producte(producte_nom, comanda_id):
+    preu = request.args.get('preu', default=0.0, type=float)
+    empresa = request.args.get('empresa', default='ECDI', type=str)
     g = Graph()
-    action = ONTO['CobrarProductes' + str(get_count())]
+    action = ONTO['CobrarProductes_' + str(get_count())]
     g.add((action, RDF.type, ONTO.CobrarProductes))
     g.add((action, ONTO.DNI, Literal(DNIusuari)))
     g.add((action, ONTO.Nom, Literal(producte_nom)))
     g.add((action, ONTO.Comanda, Literal(comanda_id)))
-    msg = build_message(g, ACL.request, AgentAssistent.uri, AgentPagament.uri, action, get_count())
+    g.add((action, ONTO.Preu, Literal(preu)))
+    g.add((action, ONTO.Empresa, Literal(empresa)))
+    msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiEntrega.uri, action, get_count())
 
-    gproducts = send_message(msg, AgentPagament.address)
+    gproducts = send_message(msg, ServeiEntrega.address)
+
+    if producte_nom in productes_enviats:
+        productes_enviats.remove(producte_nom)
     return redirect(url_for('ver_comanda', comanda_id=comanda_id), code=302)
 
 

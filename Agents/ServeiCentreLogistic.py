@@ -176,6 +176,7 @@ def communication():
                     gO.add((contraoferta_action, ONTO.UltimPreu, Literal(preu_mes_barat)))
                     gO.add((contraoferta_action, ONTO.Transportista, transportista))
                     gO.add((transportista, ONTO.Nom, Literal(nom_transportista, datatype=XSD.string)))
+                    print(port)
                     AgentTransportista = asignar_port_agenttrasportista(port + 5)
                     msg = build_message(gO, ACL.request, ServeiCentreLogistic.uri,
                                         AgentTransportista.uri, contraoferta_action, count)
@@ -196,7 +197,7 @@ def communication():
                                 preu_mes_barat = nou_preu
                 print("hola2")
                 ab1 = Process(target=enviar_paquet,
-                              args=(gr, transportista))
+                              args=(gr, transportista,nom_transportista))
                 ab1.start()
                 ab1.join()
                 preu = reclamar_pagament(gr,transportista,nom_transportista, preu_mes_barat+preu_compra, data,productes)
@@ -208,7 +209,7 @@ def communication():
 
                 return gresposta.serialize(format="xml"), 200
 
-def enviar_paquet(gr):
+def enviar_paquet(gr, transportista, nom_transportista):
     genvio = Graph()
     for s, p, o in gr:
         if p == ONTO.EnviaCondicions:
@@ -217,6 +218,8 @@ def enviar_paquet(gr):
     accion = ONTO["AssignarTransportista_" + str(count)]
     genvio.add((accion, RDF.type, ONTO.AssignarTransportista))
     genvio.add((accion, ONTO.AssignarLot, lot))
+    genvio.add((accion, ONTO.Transportista, transportista))
+    genvio.add((transportista, ONTO.Nom, nom_transportista))
     AgentTransportista = asignar_port_agenttrasportista(port + 5)
     msg = build_message(genvio, ACL.request, ServeiCentreLogistic.uri,
                         AgentTransportista.uri, accion, count)
