@@ -150,7 +150,7 @@ def registrar_comanda(id, ciutat, client, preu_total, prioritat, credit_card, pr
     g_comanda.add((comanda, ONTO.TargetaCredit, Literal(credit_card, datatype=XSD.string)))
 
     for producte in products:
-        producte_comanda_id = f"{id}_ProducteComanda_{producte["ID"]}"
+        producte_comanda_id = f"{id}_ProducteComanda_{producte['ID']}"
         producte_comanda_uri = URIRef(ONTO[producte_comanda_id])
 
         g_comanda.add((producte_comanda_uri, RDF.type, ONTO.ProducteComanda))
@@ -160,6 +160,7 @@ def registrar_comanda(id, ciutat, client, preu_total, prioritat, credit_card, pr
                        Literal(producte.get('Data', datetime(1970, 1, 1).date()), datatype=XSD.date)))
         g_comanda.add((producte_comanda_uri, ONTO.Pagat, Literal(producte.get('Pagat', False), datatype=XSD.boolean)))
         g_comanda.add((producte_comanda_uri, ONTO.Enviat, Literal(producte.get('Enviat', False), datatype=XSD.boolean)))
+        g_comanda.add((producte_comanda_uri, ONTO.Retornat, Literal("Pendiente", datatype=XSD.string)))
         g_comanda.add((producte_comanda_uri, ONTO.TransportistaProducte,
                        Literal(producte.get('Transportista', ""), datatype=XSD.string)))
         g_comanda.add((producte_comanda_uri, ONTO.Empresa, Literal(producte['Empresa'], datatype=XSD.string)))

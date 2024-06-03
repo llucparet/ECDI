@@ -17,6 +17,7 @@
                     <th>Transportista</th>
                     <th>Estat</th>
                     <th>Valoracio</th>
+                    <th>Retornat</th>
                 </tr>
             </thead>
             <tbody>
@@ -55,6 +56,19 @@
                             </form>
                         {% else %}
                             Pendent de pagament
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if product.Pagado == 'false' %}
+                            No
+                        {% elif product.Retornat == 'Retornat' %}
+                            Acceptat
+                        {% elif product.Retornat == 'Rebutjat' %}
+                            Rebutjat
+                        {% elif product.Retornat == 'Pendiente' %}
+                            <a href="/retornar/{{ comanda.ID }}/{{ product.Nom }}" class="button">Retornar</a>
+                        {% else %}
+                            No
                         {% endif %}
                     </td>
                 </tr>
