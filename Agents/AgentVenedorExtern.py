@@ -222,18 +222,7 @@ def delete_product_by_id(product_id):
 
     servei_cataleg = getAgentInfo(agn.ServeiCataleg, DirectoryAgent, AgentVenedorExtern, get_count())
     msg = build_message(g, ACL.request, AgentVenedorExtern.uri, servei_cataleg.uri, action, get_count())
-    response_graph = send_message(msg, servei_cataleg.address)
-
-    if response_graph is None:
-        return "Error enviando el mensaje al servicio de catálogo."
-
-    # Ya tenemos el grafo de respuesta
-    if (None, RDF.type, ACL.inform) in response_graph:
-        print('Producto eliminado exitosamente')
-        return None
-    else:
-        print('Error en la respuesta del servicio de catálogo')
-        return "Error en la respuesta del servicio de catálogo."
+    send_message(msg, servei_cataleg.address)
 
 def add_new_product(nomEmpresa, nomProducte, preu, marca, categoria, pes):
     global mss_cnt

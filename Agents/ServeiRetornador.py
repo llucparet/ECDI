@@ -149,10 +149,13 @@ def communication():
                 dias_pasados = (datetime.datetime.now() - fecha_compra).days
                 print(f"Días pasados desde la compra: {dias_pasados}")
 
+                # Convertir el valor de motiu a string y eliminar espacios adicionales
+                motiuN = str(motiu).strip()
+                print(f"Motiu (trimmed): {motiuN}")
+
                 # Considerar cualquier valor negativo como menor que 15 o 30
-                if dias_pasados < 0 or \
-                   (motiu == "No se satisfan les expectatives del producte" and dias_pasados <= 15) or \
-                   (motiu in ["El producte és defectuós", "El producte és erroni"] and dias_pasados <= 30):
+                if (motiuN == "No se satisfan les expectatives del producte" and dias_pasados <= 15) or \
+                   (motiuN in ["El producte és defectuós", "El producte és erroni"] and dias_pasados <= 30):
                     resolucio = "Retornat"
                     print("Devolución válida")
 
@@ -172,7 +175,7 @@ def communication():
                     g_pago.add((accion_pago, ONTO.Import, import_producte))
                     g_pago.add((accion_pago, ONTO.ProducteComanda, producte_comanda))
 
-                    servei_entrega = getAgentInfo(agn.ServeEntrega, DirectoryAgent, ServeiRetornador, get_count())
+                    servei_entrega = getAgentInfo(agn.ServeiEntrega, DirectoryAgent, ServeiRetornador, get_count())
                     msg_pago = build_message(g_pago, ACL.request, ServeiRetornador.uri, servei_entrega.uri, accion_pago,
                                              get_count())
                     send_message(msg_pago, servei_entrega.address)
