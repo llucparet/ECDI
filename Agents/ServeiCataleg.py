@@ -40,10 +40,11 @@ if args.port is None:
 else:
     port = args.port
 
-if args.open is None:
+if args.open:
     hostname = '0.0.0.0'
+    hostaddr = socket.gethostname()
 else:
-    hostname = socket.gethostname()
+    hostaddr = hostname = socket.gethostname()
 
 if args.dport is None:
     dport = 9000
@@ -67,8 +68,8 @@ mss_cnt = 0
 
 ServeiCataleg = Agent('ServeiCataleg',
                       agn.ServeiCataleg,
-                      f'http://{hostname}:{port}/comm',
-                      f'http://{hostname}:{port}/Stop')
+                      f'http://{hostaddr}:{port}/comm',
+                      f'http://{hostaddr}:{port}/Stop')
 
 # Directory agent address
 DirectoryAgent = Agent('DirectoryAgent',

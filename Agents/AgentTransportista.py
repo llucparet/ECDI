@@ -52,10 +52,11 @@ logger = config_logger(level=1)
 # parsing de los parametros de la linea de comandos
 args = parser.parse_args()
 
-if args.open is None:
+if args.open:
     hostname = '0.0.0.0'
+    hostaddr = socket.gethostname()
 else:
-    hostname = socket.gethostname()
+    hostaddr = hostname = socket.gethostname()
 
 if args.dport is None:
     dport = 9000
@@ -340,15 +341,15 @@ def tidyup():
     pass
 
 
-def TransportistaBehavior(queue):
+def TransportistaBehavior(queue,port):
 
     """
     Agent Behaviour in a concurrent thread.
     :param queue: the queue
     :return: something
     """
-    gr = register_message()
-def register_message():
+    gr = register_message(port)
+def register_message(port):
     """
     Envia un mensaje de registro al servicio de registro
     usando una performativa Request y una accion Register del
@@ -357,9 +358,12 @@ def register_message():
     :param gmess:
     :return:
     """
-    global port
 
     logger.info('Nos registramos')
+    AgentTransportista = Agent('AgentTransportista',
+                               agn.AgentTransportista,
+                               'http://%s:%d/comm' % (hostaddr, port),
+                               'http://%s:%d/Stop' % (hostaddr, port))
 
     gr = registerAgent(AgentTransportista, DirectoryAgent, AgentTransportista.uri, get_count(),port)
     return gr
@@ -374,10 +378,10 @@ def run_agent(portx, city):
     global ciutat
     ciutat = city
 
-    AgentTransportista.address = 'http://%s:%d/comm' % (hostname, portx)
-    AgentTransportista.uri = 'http://%s:%d/comm' % (hostname, portx)
+    AgentTransportista.address = 'http://%s:%d/comm' % (hostaddr, port)
+    AgentTransportista.stop = 'http://%s:%d/Stop' % (hostaddr, port)
 
-    ab1 = Process(target=TransportistaBehavior, args=(queue,))
+    ab1 = Process(target=TransportistaBehavior, args=(queue,port))
     ab1.start()
 
     app.run(host=hostname, port=portx)

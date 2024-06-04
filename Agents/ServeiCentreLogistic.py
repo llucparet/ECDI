@@ -33,10 +33,11 @@ logger = config_logger(level=1)
 # parsing de los parametros de la linea de comandos
 args = parser.parse_args()
 
-if args.open is None:
+if args.open:
     hostname = '0.0.0.0'
+    hostaddr = socket.gethostname()
 else:
-    hostname = socket.gethostname()
+    hostaddr = hostname = socket.gethostname()
 
 if args.dport is None:
     dport = 9000
@@ -50,7 +51,6 @@ else:
 
 # AGENT ATTRIBUTES ----------------------------------------------------------------------------------------
 ciutat = ""
-port = 0
 # Agent Namespace
 agn = Namespace("http://www.agentes.org#")
 
@@ -59,11 +59,11 @@ mss_cnt = 0
 
 # Data Agent
 
-ServeiCentreLogistic = Agent('ServeiCataleg',
-                      agn.ServeiCataleg,
-                      None,
-                      None)
 
+ServeiCentreLogistic = Agent('ServeiCentreLogistic',
+                             agn.ServeiCentreLogistic,
+                             None,
+                             None)
 # Directory agent address
 DirectoryAgent = Agent('DirectoryAgent',
                        agn.Directory,
@@ -80,11 +80,7 @@ queue = Queue()
 app = Flask(__name__, template_folder='../Utils/templates', static_folder='../static')
 
 
-# Agentes del sistema
-ServeiCentreLogistic = Agent('ServeiCentreLogistic',
-                             agn.ServeiCentreLogistic,
-                             None,
-                             None)
+
 
 
 # Global triplestore graph
@@ -283,15 +279,15 @@ def reclamar_pagament(gr, transportista, nom_transportista, preu, data, producte
 
 
 
-def CentreLogisticBehavior(queue):
+def CentreLogisticBehavior(queue,port):
 
     """
     Agent Behaviour in a concurrent thread.
     :param queue: the queue
     :return: something
     """
-    gr = register_message()
-def register_message():
+    gr = register_message(port)
+def register_message(port):
     """
     Envia un mensaje de registro al servicio de registro
     usando una performativa Request y una accion Register del
@@ -300,8 +296,13 @@ def register_message():
     :param gmess:
     :return:
     """
-    global port
     logger.info('Nos registramos')
+    print(f'Nos registramos en el puerto {port}')
+
+    ServeiCentreLogistic = Agent('ServeiCentreLogistic',
+                                 agn.ServeiCentreLogistic,
+                                 f'http://{hostaddr}:{port}/comm',
+                                 f'http://{hostaddr}:{port}/Stop')
 
     gr = registerAgent(ServeiCentreLogistic, DirectoryAgent, ServeiCentreLogistic.uri, get_count(),port)
     return gr
@@ -311,11 +312,11 @@ def run_agent(portx, city):
     port = portx
     global ciutat
     ciutat = city
+    print (f'Run agent {ciutat} on port {port}')
 
-    ServeiCentreLogistic.address = f'http://{hostname}:{port}/comm'
-    ServeiCentreLogistic.stop = f'http://{hostname}:{port}/Stop'
-
-    ab1 = Process(target=CentreLogisticBehavior, args=(queue,))
+    ServeiCentreLogistic.address = f'http://{hostaddr}:{port}/comm'
+    ServeiCentreLogistic.stop = f'http://{hostaddr}:{port}/Stop'
+    ab1 = Process(target=CentreLogisticBehavior, args=(queue,port))
     ab1.start()
 
     app.run(host=hostname, port=portx)

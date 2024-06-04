@@ -42,10 +42,11 @@ if args.port is None:
 else:
     port = args.port
 
-if args.open is None:
-    hostname = '0.0.0.0'
+if args.open:
+        hostname = '0.0.0.0'
+        hostaddr = socket.gethostname()
 else:
-    hostname = socket.gethostname()
+    hostaddr = hostname = socket.gethostname()
 
 if args.dport is None:
     dport = 9000
@@ -69,8 +70,8 @@ mss_cnt = 0
 
 ServeiComandes = Agent('ServeiComandes',
                       agn.ServeiComandes,
-                      f'http://{hostname}:{port}/comm',
-                      f'http://{hostname}:{port}/Stop')
+                      f'http://{hostaddr}:{port}/comm',
+                      f'http://{hostaddr}:{port}/Stop')
 
 # Directory agent address
 DirectoryAgent = Agent('DirectoryAgent',
@@ -314,9 +315,10 @@ def communication():
                 ab1.start()
 
                 # Creación y inicio del segundo proceso para notificar_productes_venedors_externs
-                notificar_process = Process(target=notificar_produtes_venedors_externs,
+                if len(llista_productes_externs) > 0:
+                    notificar_process = Process(target=notificar_produtes_venedors_externs,
                                             args=(llista_productes_externs, dni))
-                notificar_process.start()
+                    notificar_process.start()
 
                 print(preu_total)
                 gr.add((comanda, ONTO.PreuTotal, Literal(preu_total, datatype=XSD.float)))

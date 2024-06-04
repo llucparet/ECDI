@@ -38,10 +38,11 @@ if args.port is None:
 else:
     port = args.port
 
-if args.open is None:
+if args.open:
     hostname = '0.0.0.0'
+    hostaddr = socket.gethostname()
 else:
-    hostname = socket.gethostname()
+    hostaddr = hostname = socket.gethostname()
 
 if args.dport is None:
     dport = 9000
@@ -65,8 +66,8 @@ mss_cnt = 0
 
 AgentPagament = Agent('AgentPagament',
                       agn.AgentPagament,
-                      'http://%s:%d/comm' % (hostname, port),
-                      'http://%s:%d/Stop' % (hostname, port))
+                      'http://%s:%d/comm' % (hostaddr, port),
+                      'http://%s:%d/Stop' % (hostaddr, port))
 
 # Directory agent address
 DirectoryAgent = Agent('DirectoryAgent',

@@ -60,6 +60,9 @@ def send_message(gmess, address):
     un grafo RDF
     """
     msg = gmess.serialize(format='xml')
+    print('Enviando mensaje')
+    print(msg)
+    print(address)
     r = requests.get(address, params={'content': msg})
 
     # Procesa la respuesta y la retorna como resultado como grafo
@@ -96,6 +99,7 @@ def get_message_properties(msg):
 def getAgentInfo(agentType, directoryAgent, sender, messageCount,port = 9000):
     print(sender.name)
     print(sender.uri)
+    print(port)
     gmess = Graph()
     gmess.bind('foaf', FOAF)
     gmess.bind('dso', DSO)

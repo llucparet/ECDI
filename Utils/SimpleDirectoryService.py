@@ -94,7 +94,7 @@ def register():
         dsgraph.add((agn_uri, DSO.AgentType, agn_type))
         dsgraph.add((agn_uri, ONTO.Port, agn_port))
 
-        logger.info('Registrado agente: ' + agn_name + ' - tipus:' + agn_type)
+        logger.info('Registrado agente: ' + agn_name + ' - tipus:' + agn_type + ' - URI:' + str(agn_uri) + ' - Port:' + str(agn_port)+ ' - Adreça:' + agn_add)
 
         # Generamos un mensaje de respuesta
         return build_message(Graph(),
@@ -132,12 +132,18 @@ def register():
         if rsearch is not None:
             if str(agn_type) == 'http://www.agentes.org#ServeiCentreLogistic':
                 port = gm.value(subject=content, predicate=ONTO.Port)
-                research2 = dsgraph.triples((None, ONTO.Port, port))
-                agn_uri = next(research2)[0]
+                rsearch2 = list(dsgraph.triples((None, ONTO.Port, port)))
+                for element in rsearch2:
+                    print("Elemento encontrado2: ")
+                    print(element)
+                agn_uri = next(iter(rsearch2))[0]
             elif str(agn_type) == 'http://www.agentes.org#AgentTransportista':
                 port = gm.value(subject=content, predicate=ONTO.Port)
-                research2 = dsgraph.triples((None, ONTO.Port, port))
-                agn_uri = next(research2)[0]
+                rsearch2 = list(dsgraph.triples((None, ONTO.Port, port)))
+                for element in rsearch2:
+                    print("Elemento encontrado3: ")
+                    print(element)
+                agn_uri = next(iter(rsearch2))[0]
             else:
                 agn_uri = next(iter(rsearch))[0]
 
@@ -150,7 +156,7 @@ def register():
             gr.add((rsp_obj, DSO.Uri, agn_uri))
             gr.add((rsp_obj, FOAF.name, agn_name))
             logger.info("Agente encontrado: " + agn_name)
-            print("Agente encontrado: " + agn_name)
+            print("Agente encontrado: " + agn_name + " - " + str(agn_uri) + " - " + str(agn_add))
             print(rsp_obj)
             return build_message(gr,
                                  ACL.inform,
