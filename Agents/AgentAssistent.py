@@ -1,51 +1,86 @@
+import argparse
 import random
-
+import sys
+import os
+sys.path.insert(0, os.path.abspath('../'))
 import flask
 import requests
 from SPARQLWrapper import SPARQLWrapper, JSON
 from flask import Flask, request, render_template, redirect, url_for
-from rdflib import Namespace, Graph, RDF, Literal, URIRef
+from rdflib import Namespace, Graph, RDF, Literal, URIRef, XSD
 
 from Utils.ACL import ACL
-from Utils.ACLMessages import build_message, get_message_properties, send_message
+from Utils.ACLMessages import build_message, get_message_properties, send_message, registerAgent, getAgentInfo
 from Utils.Agent import Agent
 from Utils.Logger import config_logger
 from Utils.OntoNamespaces import ONTO
 import socket
 from multiprocessing import Queue, Process
 
+# Definimos los parametros de la linea de comandos
+parser = argparse.ArgumentParser()
+parser.add_argument('--open', help="Define si el servidor est abierto al exterior o no", action='store_true',
+                    default=False)
+parser.add_argument('--port', type=int, help="Puerto de comunicacion del agente")
+parser.add_argument('--dhost', default=socket.gethostname(), help="Host del agente de directorio")
+parser.add_argument('--dport', type=int, help="Puerto de comunicacion del agente de directorio")
 
-# Configuración de logging
+# Logging
 logger = config_logger(level=1)
 
-# Configuración del agente
-hostname = '0.0.0.0'
-port = 9011
+# parsing de los parametros de la linea de comandos
+args = parser.parse_args()
 
-# Namespaces para RDF
+# Configuration stuff
+if args.port is None:
+    port = 9003
+else:
+    port = args.port
+
+if args.open:
+    hostname = '0.0.0.0'
+else:
+    hostname = socket.gethostname()
+
+if args.dport is None:
+    dport = 9000
+else:
+    dport = args.dport
+
+if args.dhost is None:
+    dhostname = socket.gethostname()
+else:
+    dhostname = args.dhost
+
+# AGENT ATTRIBUTES ----------------------------------------------------------------------------------------
+
+# Agent Namespace
 agn = Namespace("http://www.agentes.org#")
 
-# Instancia del Flask app
-app = Flask(__name__, template_folder='../Utils/templates', static_folder='../static')
+# Message Count
+mss_cnt = 0
 
-# Agentes del sistema
+# Data Agent
+
 AgentAssistent = Agent('AgentAssistent', agn.AgentAssistent, f'http://{hostname}:{port}/comm',
                        f'http://{hostname}:{port}/Stop')
-ServeiBuscador = Agent('ServeiBuscador', agn.ServeiBuscador, f'http://{hostname}:8003/comm',
-                       f'http://{hostname}:8003/Stop')
-ServeiComandes = Agent('ServeiComandes', agn.ServeiComandes, f'http://{hostname}:8012/comm',
-                       f'http://{hostname}:8012/Stop')
-AgentPagament = Agent('AgentPagament', agn.AgentPagament, f'http://{hostname}:8007/comm',
-                      f'http://{hostname}:8007/Stop')
-ServeiRetornador = Agent('ServeiRetornador', agn.ServeiRetornador, f'http://{hostname}:8030/comm',
-                         f'http://{hostname}:8030/Stop')
-ServeiEntrega = Agent('ServeiEntrega', agn.ServeiEntrega, f'http://{hostname}:8000/comm', f'http://{hostname}:8000/Stop')
-ServeiClients = Agent('ServeiClients', agn.ServeiClients, f'http://{hostname}:8024/comm',f'http://{hostname}:8024/Stop')
+# Directory agent address
+DirectoryAgent = Agent('DirectoryAgent',
+                       agn.Directory,
+                       'http://%s:%d/Register' % (dhostname, dport),
+                       'http://%s:%d/Stop' % (dhostname, dport))
 
-cola1 = Queue()
+# Global triplestore graph
+dsGraph = Graph()
+
+# Queue
+queue = Queue()
+
+# Flask app
+app = Flask(__name__, template_folder='../Utils/templates', static_folder='../static')
+
 
 # Variables globales
-mss_cnt = 0
 productos_recomendados = []
 products_list = []
 DNIusuari = ""
@@ -224,9 +259,11 @@ def realizar_compra(products_to_buy, city, priority, creditCard):
         g.add((producte, ONTO.Empresa, Literal(p['Empresa'])))
         g.add((action, ONTO.Compra, producte))
     # Send the GET request with a timeout
-    msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiComandes.uri, action, mss_cnt)
+
+    servei_comandes = getAgentInfo(agn.ServeiComandes, DirectoryAgent, AgentAssistent, get_count())
+    msg = build_message(g, ACL.request, AgentAssistent.uri, servei_comandes.uri, action, mss_cnt)
     mss_cnt += 1
-    resposta = send_message(msg, ServeiComandes.address)
+    resposta = send_message(msg, servei_comandes.address)
     comanda_info = {}
     products = []
     for s, p, o in resposta:
@@ -340,13 +377,15 @@ def buscar_productos(Nom=None, PreuMin=0.0, PreuMax=10000.0, Marca=None, Valorac
 
     print(
         f'Buscando productos con las siguientes restricciones: {Nom}, {PreuMin}, {PreuMax}, {Marca}, {Valoracio}, {Categoria}')
-    msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiBuscador.uri, action, mss_cnt)
+
+    servei_buscador = getAgentInfo(agn.ServeiBuscador, DirectoryAgent, AgentAssistent, get_count())
+    msg = build_message(g, ACL.request, AgentAssistent.uri, servei_buscador.uri, action, mss_cnt)
     print(f'Mensaje construido: {msg}')
     mss_cnt += 1
 
     try:
         print(f'Enviando mensaje a ServeiBuscador: {msg}')
-        gproducts = send_message(msg, ServeiBuscador.address)
+        gproducts = send_message(msg, servei_buscador.address)
         print(f'Respuesta recibida: {gproducts}')
         products_list = []
         subjects_position = {}
@@ -513,9 +552,11 @@ def valorar_producte(comanda_id, producte_nom):
     g.add((action, ONTO.Nom, Literal(producte_nom)))
     g.add((action, ONTO.Comanda, Literal(comanda_id)))
     g.add((action, ONTO.Valoracio, Literal(float(valoracion))))
-    msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiClients.uri, action, get_count())
 
-    send_message(msg, ServeiClients.address)
+    servei_clients = getAgentInfo(agn.ServeiClients, DirectoryAgent, AgentAssistent, get_count())
+    msg = build_message(g, ACL.request, AgentAssistent.uri, servei_clients.uri, action, get_count())
+
+    send_message(msg, servei_clients.address)
     return redirect(url_for('ver_comanda', comanda_id=comanda_id), code=302)
 
 
@@ -531,9 +572,11 @@ def pagar_producte(producte_nom, comanda_id):
     g.add((action, ONTO.Comanda, Literal(comanda_id)))
     g.add((action, ONTO.Preu, Literal(preu)))
     g.add((action, ONTO.Empresa, Literal(empresa)))
-    msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiEntrega.uri, action, get_count())
 
-    gproducts = send_message(msg, ServeiEntrega.address)
+    servei_entrega = getAgentInfo(agn.ServeiEntrega, DirectoryAgent, AgentAssistent, get_count())
+    msg = build_message(g, ACL.request, AgentAssistent.uri, servei_entrega.uri, action, get_count())
+
+    gproducts = send_message(msg, servei_entrega.address)
 
     if producte_nom in productes_enviats:
         productes_enviats.remove(producte_nom)
@@ -617,8 +660,9 @@ def retornar_producte(comanda_id, producte_nom):
         print(g.serialize(format='xml'))
 
         # Enviar mensaje al ServeiRetornador
-        msg = build_message(g, ACL.request, AgentAssistent.uri, ServeiRetornador.uri, action, get_count())
-        response = send_message(msg, ServeiRetornador.address)
+        servei_retornador = getAgentInfo(agn.ServeiRetornador, DirectoryAgent, AgentAssistent, get_count())
+        msg = build_message(g, ACL.request, AgentAssistent.uri, servei_retornador.uri, action, get_count())
+        response = send_message(msg, servei_retornador.address)
 
         # Procesar la respuesta del ServeiRetornador
         resolucio = None
@@ -645,27 +689,35 @@ def retornar_producte(comanda_id, producte_nom):
     return render_template('retornar_producte.html', comanda_id=comanda_id, producte_nom=producte_nom,products_enviats=productes_enviats,products_externs=productes_externs)
 
 
-def agentbehavior1(queue):
-    """
-    Un comportamiento del agente
+def AssistentBehavior(queue):
 
+    """
+    Agent Behaviour in a concurrent thread.
+    :param queue: the queue
+    :return: something
+    """
+    gr = register_message()
+def register_message():
+    """
+    Envia un mensaje de registro al servicio de registro
+    usando una performativa Request y una accion Register del
+    servicio de directorio
+
+    :param gmess:
     :return:
     """
-    pass
 
+    logger.info('Nos registramos')
 
+    gr = registerAgent(AgentAssistent, DirectoryAgent, AgentAssistent.uri, get_count(),port)
+    return gr
 if __name__ == '__main__':
-    """
-    # Ponemos en marcha los behaviors
-    ab1 = Process(target=agentbehavior1, args=(cola1,))
+    ab1 = Process(target=AssistentBehavior, args=(queue,))
     ab1.start()
-    compra =False
-    # Ponemos en marcha el servidor
-    app.run(host=hostname, port=port)
 
-    # Esperamos a que acaben los behaviors
+    # Run server
+    app.run(host=hostname, port=port, debug=False)
+
+    # Wait behaviors
     ab1.join()
-
     print('The End')
-    """
-    app.run(host=hostname, port=port)

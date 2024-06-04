@@ -1,30 +1,85 @@
-import sys
+import os
 
+import argparse
+import sys
+sys.path.insert(0, os.path.abspath('../'))
 from SPARQLWrapper import JSON, SPARQLWrapper
 from flask import Flask, request
 from rdflib import Graph, RDF, Namespace, Literal, URIRef
 from multiprocessing import Queue, Process
 
-from Agents.AgentAssistent import cola1
 from Utils.ACL import ACL
-from Utils.ACLMessages import build_message, get_message_properties
+from Utils.ACLMessages import build_message, get_message_properties, registerAgent
 from Utils.Agent import Agent
 from Utils.FlaskServer import shutdown_server
 from Utils.Logger import config_logger
 from Utils.OntoNamespaces import ONTO
 import socket
 
-# Configuración de logging
+# Definimos los parametros de la linea de comandos
+parser = argparse.ArgumentParser()
+parser.add_argument('--open', help="Define si el servidor est abierto al exterior o no", action='store_true',
+                    default=False)
+parser.add_argument('--port', type=int, help="Puerto de comunicacion del agente")
+parser.add_argument('--dhost', default=socket.gethostname(), help="Host del agente de directorio")
+parser.add_argument('--dport', type=int, help="Puerto de comunicacion del agente de directorio")
+
+# Logging
 logger = config_logger(level=1)
 
-# Configuración del agente
-hostname = '0.0.0.0'
-port = 8003
-agn = Namespace("http://www.agentes.org#")
-ServeiBuscador = Agent('ServeiBuscador', agn.ServeiBuscador, f'http://{hostname}:{port}/comm', f'http://{hostname}:{port}/Stop')
+# parsing de los parametros de la linea de comandos
+args = parser.parse_args()
 
-app = Flask(__name__)
+# Configuration stuff
+if args.port is None:
+    port = 9003
+else:
+    port = args.port
+
+if args.open:
+    hostname = '0.0.0.0'
+else:
+    hostname = socket.gethostname()
+
+if args.dport is None:
+    dport = 9000
+else:
+    dport = args.dport
+
+if args.dhost is None:
+    dhostname = socket.gethostname()
+else:
+    dhostname = args.dhost
+
+# AGENT ATTRIBUTES ----------------------------------------------------------------------------------------
+
+# Agent Namespace
+agn = Namespace("http://www.agentes.org#")
+
+# Message Count
 mss_cnt = 0
+
+# Data Agent
+
+ServeiBuscador = Agent('ServeiBuscador',
+                       agn.ServeiBuscador,
+                       f'http://{hostname}:{port}/comm',
+                       f'http://{hostname}:{port}/Stop')
+# Directory agent address
+DirectoryAgent = Agent('DirectoryAgent',
+                       agn.Directory,
+                       'http://%s:%d/Register' % (dhostname, dport),
+                       'http://%s:%d/Stop' % (dhostname, dport))
+
+# Global triplestore graph
+dsGraph = Graph()
+
+# Queue
+queue = Queue()
+
+# Flask app
+app = Flask(__name__)
+
 
 def get_count():
     global mss_cnt
@@ -131,20 +186,38 @@ def buscar_productos(**filters):
 
 @app.route("/Stop")
 def stop():
-    tidyup()
     shutdown_server()
     return "Stopping server"
 
-def tidyup():
-    pass
+def buscadorBehavior(queue):
 
+    """
+    Agent Behaviour in a concurrent thread.
+    :param queue: the queue
+    :return: something
+    """
+    gr = register_message()
+def register_message():
+    """
+    Envia un mensaje de registro al servicio de registro
+    usando una performativa Request y una accion Register del
+    servicio de directorio
+
+    :param gmess:
+    :return:
+    """
+
+    logger.info('Nos registramos')
+
+    gr = registerAgent(ServeiBuscador, DirectoryAgent, ServeiBuscador.uri, get_count(),port)
+    return gr
 if __name__ == '__main__':
-    # Ponemos en marcha los behaviors
+    ab1 = Process(target=buscadorBehavior, args=(queue,))
+    ab1.start()
 
+    # Run server
+    app.run(host=hostname, port=port, debug=False)
 
-    # Ponemos en marcha el servidor
-    app.run(host=hostname, port=port)
-
-    # Esperamos a que acaben los behaviors
-
+    # Wait behaviors
+    ab1.join()
     print('The End')

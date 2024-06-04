@@ -16,6 +16,8 @@ import time, random
 import argparse
 import socket
 import sys
+import os
+sys.path.insert(0, os.path.abspath('../'))
 import requests
 from multiprocessing import Queue, Process
 from flask import Flask, request
@@ -34,31 +36,59 @@ import datetime
 import time
 
 from Utils.ACL import ACL
-from Utils.ACLMessages import send_message, build_message
+from Utils.ACLMessages import build_message
 
+# Definimos los parametros de la linea de comandos
+parser = argparse.ArgumentParser()
+parser.add_argument('--open', help="Define si el servidor est abierto al exterior o no", action='store_true',
+                    default=False)
+parser.add_argument('--port', type=int, help="Puerto de comunicacion del agente")
+parser.add_argument('--dhost', default=socket.gethostname(), help="Host del agente de directorio")
+parser.add_argument('--dport', type=int, help="Puerto de comunicacion del agente de directorio")
+
+# Logging
 logger = config_logger(level=1)
 
-# Configuration stuff
-hostname = '0.0.0.0'
+# parsing de los parametros de la linea de comandos
+args = parser.parse_args()
+
+if args.open:
+    hostname = '0.0.0.0'
+else:
+    hostname = socket.gethostname()
+
+if args.dport is None:
+    dport = 9000
+else:
+    dport = args.dport
+
+if args.dhost is None:
+    dhostname = socket.gethostname()
+else:
+    dhostname = args.dhost
+
+# AGENT ATTRIBUTES ----------------------------------------------------------------------------------------
 port = None
 ciutat = None
-
+# Agent Namespace
 agn = Namespace("http://www.agentes.org#")
 
-# Contador de mensajes
+# Message Count
 mss_cnt = 0
 
-# Datos del Agente
+# Data Agent
 
-AgTransportista = None
+# Directory agent address
+DirectoryAgent = Agent('DirectoryAgent',
+                       agn.Directory,
+                       'http://%s:%d/Register' % (dhostname, dport),
+                       'http://%s:%d/Stop' % (dhostname, dport))
 
-def assignar_port_transportista():
-    return Agent('AgentTransportista',
-                        agn.AgTransportista,
-                        'http://%s:%d/comm' % (hostname, port),
-                        'http://%s:%d/Stop' % (hostname, port))
+AgentTransportista = Agent('AgentTransportista',
+                        agn.AgentTransportista,
+                        None,
+                        None)
 
-ServeiCentreLogistic = None
 
 # identificador transportista, nombre transportista, €/kg, €/km
 banyoles = [
@@ -103,35 +133,13 @@ llista_transportistas = {
     "Zaragoza": zaragoza
 }
 
-gFirstOffers = Graph()
-
 # Global triplestore graph
 dsgraph = Graph()
 
-cola1 = Queue()
+queue = Queue()
 global obj
 # Flask stuff
 app = Flask(__name__)
-
-def run_agent(portx, city):
-    @app.route('/')
-    def index():
-        return f"Agent running on port {portx} in city {city}"
-
-    global port
-    port = portx
-    global ciutat
-    ciutat = city
-    global ServeiCentreLogistic
-    ServeiCentreLogistic = asignar_port_CentreLogistic(port - 5)
-    assignar_port_transportista()
-    app.run(host=hostname, port=portx)
-
-def asignar_port_CentreLogistic(port):
-    return  Agent('ServeiCentreLogistic',
-                               agn.ServeiCentreLogistic,
-                               f'http://{hostname}:{port}/comm',
-                               f'http://{hostname}:{port}/Stop')
 
 def get_count():
     global mss_cnt
@@ -215,14 +223,14 @@ def communication():
     gr = Graph()
     if msgdic is None:
         # Si no es, respondemos que no hemos entendido el mensaje
-        gr = build_message(Graph(), ACL['not-understood'], sender=AgTransportista.uri, msgcnt=get_count())
+        gr = build_message(Graph(), ACL['not-understood'], sender=AgentTransportista.uri, msgcnt=get_count())
     else:
         # Obtenemos la performativa
         if msgdic['performative'] != ACL.request:
             # Si no es un request, respondemos que no hemos entendido el mensaje
             gr = build_message(Graph(),
                                ACL['not-understood'],
-                               sender=AgTransportista.uri,
+                               sender=AgentTransportista.uri,
                                msgcnt=get_count())
         else:
             content = msgdic['content']
@@ -332,14 +340,48 @@ def tidyup():
     pass
 
 
-def agentbehavior1(cola):
-    """
-    Un comportamiento del agente
+def TransportistaBehavior(queue):
 
+    """
+    Agent Behaviour in a concurrent thread.
+    :param queue: the queue
+    :return: something
+    """
+    gr = register_message()
+def register_message():
+    """
+    Envia un mensaje de registro al servicio de registro
+    usando una performativa Request y una accion Register del
+    servicio de directorio
+
+    :param gmess:
     :return:
     """
-    pass
+    global port
 
+    logger.info('Nos registramos')
+
+    gr = registerAgent(AgentTransportista, DirectoryAgent, AgentTransportista.uri, get_count(),port)
+    return gr
+
+def run_agent(portx, city):
+    @app.route('/')
+    def index():
+        return f"Agent running on port {portx} in city {city}"
+
+    global port
+    port = portx
+    global ciutat
+    ciutat = city
+
+    AgentTransportista.address = 'http://%s:%d/comm' % (hostname, portx)
+    AgentTransportista.uri = 'http://%s:%d/comm' % (hostname, portx)
+
+    ab1 = Process(target=TransportistaBehavior, args=(queue,))
+    ab1.start()
+
+    app.run(host=hostname, port=portx)
+    ab1.join()
 
 if __name__ == '__main__':
     ports_cities = {

@@ -1,6 +1,7 @@
-import requests
-from Utils.templates import *
+import argparse
+import sys
 import os
+sys.path.insert(0, os.path.abspath('../'))
 from rdflib import Graph, Namespace, Literal, RDF, URIRef, XSD
 from flask import Flask, request, render_template
 from Utils.ACLMessages import *
@@ -14,36 +15,71 @@ import time
 import socket
 from multiprocessing import Process, Queue
 
+# Definimos los parametros de la linea de comandos
+parser = argparse.ArgumentParser()
+parser.add_argument('--open', help="Define si el servidor est abierto al exterior o no", action='store_true',
+                    default=False)
+parser.add_argument('--port', type=int, help="Puerto de comunicacion del agente")
+parser.add_argument('--dhost', default=socket.gethostname(), help="Host del agente de directorio")
+parser.add_argument('--dport', type=int, help="Puerto de comunicacion del agente de directorio")
+
+# Logging
 logger = config_logger(level=1)
 
-# Configuration stuff
-hostname = '0.0.0.0'
-port = 8080
+# parsing de los parametros de la linea de comandos
+args = parser.parse_args()
 
+# Configuration stuff
+if args.port is None:
+    port = 8080
+else:
+    port = args.port
+
+if args.open:
+    hostname = '0.0.0.0'
+else:
+    hostname = socket.gethostname()
+
+if args.dport is None:
+    dport = 9000
+else:
+    dport = args.dport
+
+if args.dhost is None:
+    dhostname = socket.gethostname()
+else:
+    dhostname = args.dhost
+
+# AGENT ATTRIBUTES ----------------------------------------------------------------------------------------
+
+# Agent Namespace
 agn = Namespace("http://www.agentes.org#")
 
+# Message Count
 mss_cnt = 0
+
+# Data Agent
 
 AgentVenedorExtern = Agent('AgentVenedorExtern',
                           agn.AgentVenedorExtern,
                           f'http://{hostname}:{port}/comm',
                           f'http://{hostname}:{port}/Stop')
-
-ServeiCataleg = Agent('ServeiCataleg',
-                          agn.AgGestorProductes,
-                          f'http://{hostname}:8005/comm',
-                          f'http://{hostname}:8005/Stop')
+# Directory agent address
+DirectoryAgent = Agent('DirectoryAgent',
+                       agn.Directory,
+                       'http://%s:%d/Register' % (dhostname, dport),
+                       'http://%s:%d/Stop' % (dhostname, dport))
 
 # Global triplestore graph
-dsgraph = Graph()
+dsGraph = Graph()
 
-cola1 = Queue()
+# Queue
+queue = Queue()
 
 # Fuseki endpoint
 fuseki_url = 'http://localhost:3030/ONTO/query'
 
 # Flask stuff
-app = Flask(__name__)
 
 template_dir = os.path.abspath('../Utils/templates')
 app = Flask(__name__, template_folder=template_dir, static_folder='../static')
@@ -183,8 +219,9 @@ def delete_product_by_id(product_id):
     g.add((action, RDF.type, ONTO.EliminarProducteExtern))
     g.add((action, ONTO.ID, Literal(product_id)))
 
-    msg = build_message(g, ACL.request, AgentVenedorExtern.uri, ServeiCataleg.uri, action, get_count())
-    response_graph = send_message(msg, ServeiCataleg.address)
+    servei_cataleg = getAgentInfo(agn.ServeiCataleg, DirectoryAgent, AgentVenedorExtern, get_count())
+    msg = build_message(g, ACL.request, AgentVenedorExtern.uri, servei_cataleg.uri, action, get_count())
+    response_graph = send_message(msg, servei_cataleg.address)
 
     if response_graph is None:
         return "Error enviando el mensaje al servicio de catálogo."
@@ -222,8 +259,11 @@ def add_new_product(nomEmpresa, nomProducte, preu, marca, categoria, pes):
     g.add((action, ONTO.Pes, Literal(pes)))
     g.add((action, ONTO.Categoria, Literal(categoria)))
 
-    msg = build_message(g, ACL.request, AgentVenedorExtern.uri, ServeiCataleg.uri, action, get_count())
-    send_message(msg, ServeiCataleg.address)
+    servei_cataleg = getAgentInfo(agn.ServeiCataleg, DirectoryAgent, AgentVenedorExtern, get_count())
+    print(servei_cataleg.uri)
+    print(servei_cataleg.address)
+    msg = build_message(g, ACL.request, AgentVenedorExtern.uri, servei_cataleg.uri, action, get_count())
+    send_message(msg, servei_cataleg.address)
     return False, None
 
 
@@ -309,25 +349,36 @@ def tidyup():
     pass
 
 
-def agentbehavior1(queue):
+def VenedorExternBehavior(queue):
+
     """
-    Un comportament de l'agent
+    Agent Behaviour in a concurrent thread.
+    :param queue: the queue
+    :return: something
+    """
+    gr = register_message()
+def register_message():
+    """
+    Envia un mensaje de registro al servicio de registro
+    usando una performativa Request y una accion Register del
+    servicio de directorio
+
+    :param gmess:
     :return:
     """
-    pass
 
+    logger.info('Nos registramos')
 
+    gr = registerAgent(AgentVenedorExtern, DirectoryAgent, AgentVenedorExtern.uri, get_count(),port)
+    return gr
 if __name__ == '__main__':
-    """
-    # Ponemos en marcha los behaviors
-    ab1 = Process(target=agentbehavior1, args=(cola1,))
+    ab1 = Process(target=VenedorExternBehavior, args=(queue,))
     ab1.start()
-    # Ponemos en marcha el servidor
-    app.run(host=hostname, port=port)
 
-    # Esperamos a que acaben los behaviors
+    # Run server
+    app.run(host=hostname, port=port, debug=False)
+
+    # Wait behaviors
     ab1.join()
-
     print('The End')
-    """
-    app.run(host=hostname, port=port)
+

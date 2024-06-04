@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
+import argparse
 import socket
 import time
+import sys
+import os
+sys.path.insert(0, os.path.abspath('../'))
 from datetime import datetime
 from multiprocessing import Queue, Process
 
@@ -18,49 +22,76 @@ from geopy.distance import great_circle, geodesic
 
 from Utils.ACLMessages import build_message, send_message, get_message_properties
 
+# Definimos los parametros de la linea de comandos
+parser = argparse.ArgumentParser()
+parser.add_argument('--open', help="Define si el servidor est abierto al exterior o no", action='store_true',
+                    default=False)
+parser.add_argument('--port', type=int, help="Puerto de comunicacion del agente")
+parser.add_argument('--dhost', default=socket.gethostname(), help="Host del agente de directorio")
+parser.add_argument('--dport', type=int, help="Puerto de comunicacion del agente de directorio")
+
+# Logging
 logger = config_logger(level=1)
 
-# Configuration stuff
-hostname = '0.0.0.0'
-port = 8012
+# parsing de los parametros de la linea de comandos
+args = parser.parse_args()
 
+# Configuration stuff
+if args.port is None:
+    port = 8012
+else:
+    port = args.port
+
+if args.open:
+    hostname = '0.0.0.0'
+else:
+    hostname = socket.gethostname()
+
+if args.dport is None:
+    dport = 9000
+else:
+    dport = args.dport
+
+if args.dhost is None:
+    dhostname = socket.gethostname()
+else:
+    dhostname = args.dhost
+
+# AGENT ATTRIBUTES ----------------------------------------------------------------------------------------
+
+# Agent Namespace
 agn = Namespace("http://www.agentes.org#")
 
-# Contador de mensajes
-mss_cnt = 1
-endpoint_url = "http://localhost:3030/ONTO/query"
+# Message Count
+mss_cnt = 0
 
-fuseki_url = 'http://localhost:3030/ONTO/data'
+# Data Agent
 
-ServeiComanda = Agent('ServeiComanda',
-                      agn.ServeiComanda,
-                      'http://%s:%d/comm' % (hostname, port),
-                      'http://%s:%d/Stop' % (hostname, port))
+ServeiComandes = Agent('ServeiCataleg',
+                      agn.Comandes,
+                      f'http://{hostname}:{port}/comm',
+                      f'http://{hostname}:{port}/Stop')
 
-AgentAssistent = Agent('AgentAssistent',
-                       agn.AgentAssistent,
-                       'http://%s:9011/comm' % hostname,
-                       'http://%s:9011/Stop' % hostname)
-
-ServeiEntrega = Agent('ServeiEntrega', agn.ServeiEntrega, f'http://{hostname}:8000/comm', f'http://{hostname}:8000/Stop')
-
-def asignar_port_centre_logistic(port):
-    portcentrelogistic = port
-    ServeiCentreLogistic = Agent('ServeiCentreLogistic',
-                                 agn.ServeiCentreLogistic,
-                                 'http://%s:%d/comm' % (hostname, portcentrelogistic),
-                                 'http://%s:%d/Stop' % (hostname, portcentrelogistic))
-    return ServeiCentreLogistic
+# Directory agent address
+DirectoryAgent = Agent('DirectoryAgent',
+                       agn.Directory,
+                       'http://%s:%d/Register' % (dhostname, dport),
+                       'http://%s:%d/Stop' % (dhostname, dport))
 
 
 # Global triplestore graph
+dsgraph = Graph()
 
-cola1 = Queue()
+queue = Queue()
 
 # Flask stuff
 app = Flask(__name__)
 
+# Contador de mensajes
 
+endpoint_url = f"http://{dhostname}:3030/ONTO/query"
+
+fuseki_url = f'http://{dhostname}:3030/ONTO/data'
 
 
 productes_centre1 = []
@@ -206,7 +237,7 @@ def communication():
 
     if msgdic is None:
         # Si no es, respondemos que no hemos entendido el mensaje
-        gr = build_message(Graph(), ACL['not-understood'], sender=AgentAssistent.uri, msgcnt=get_count())
+        gr = build_message(Graph(), ACL['not-understood'], sender=ServeiComandes.uri, msgcnt=get_count())
 
     else:
         # Obtenemos la performativa
@@ -214,7 +245,7 @@ def communication():
             # Si no es un request, respondemos que no hemos entendido el mensaje
             gr = build_message(Graph(),
                                ACL['not-understood'],
-                               sender=AgentAssistent.uri,
+                               sender=ServeiComandes.uri,
                                msgcnt=get_count())
 
         else:
@@ -278,7 +309,7 @@ def communication():
 
                 # Creación y inicio del primer proceso
                 ab1 = Process(target=agentbehavior1,
-                              args=(cola1, comanda_id, llista_productes, llista_productes_externs, ciutat, priority,
+                              args=(queue, comanda_id, llista_productes, llista_productes_externs, ciutat, priority,
                                     creditcard, dni, comanda, gm, preu_total))
                 ab1.start()
 
@@ -445,10 +476,10 @@ def comanda_a_centre_logistic(productes, portcentrelogistic,ciutat,priority, cre
     gr.add((comanda, ONTO.ClientComanda, URIRef(client)))
 
     gr.add((acction, ONTO.Processa, comanda))
-    ServeiCentreLogistic = asignar_port_centre_logistic(portcentrelogistic)
 
-    msg = build_message(gr, ACL.request, ServeiCentreLogistic.uri, ServeiCentreLogistic.uri, acction, get_count())
-    resposta = send_message(msg, ServeiCentreLogistic.address)
+    servei_centre_logistic = getAgentInfo(agn.ServeiCentreLogistic, DirectoryAgent, ServeiComandes, get_count(),portcentrelogistic)
+    msg = build_message(gr, ACL.request, ServeiComandes.uri, servei_centre_logistic.uri, acction, get_count())
+    resposta = send_message(msg, servei_centre_logistic.address)
     preu = 0
     for s, p, o in resposta:
         if p == ONTO.Preu:
@@ -471,11 +502,42 @@ def notificar_produtes_venedors_externs(llista_produces_externs,dni):
         g.add((accio, ONTO.Empresa, Literal(empresa)))
         g.add((accio, ONTO.Preu, Literal(preu)))
     g.add((accio, ONTO.DNI, Literal(dni)))
-    msg = build_message(g, ACL.request, ServeiComanda.uri, ServeiEntrega.uri, accio, get_count())
-    send_message(msg, ServeiEntrega.address)
+
+    servei_entrega = getAgentInfo(agn.ServeiEntrega, DirectoryAgent, ServeiComandes, get_count())
+    msg = build_message(g, ACL.request, ServeiComandes.uri, servei_entrega.uri, accio, get_count())
+    send_message(msg, servei_entrega.address)
     print("notificar_produtes_venedors_externs_surto")
     return g.serialize(format='xml'), 200
 
+def ComandesBehavior(queue):
+
+    """
+    Agent Behaviour in a concurrent thread.
+    :param queue: the queue
+    :return: something
+    """
+    gr = register_message()
+def register_message():
+    """
+    Envia un mensaje de registro al servicio de registro
+    usando una performativa Request y una accion Register del
+    servicio de directorio
+
+    :param gmess:
+    :return:
+    """
+
+    logger.info('Nos registramos')
+
+    gr = registerAgent(ServeiComandes, DirectoryAgent, ServeiComandes.uri, get_count(),port)
+    return gr
 if __name__ == '__main__':
-    # Ponemos en marcha el servidor
-    app.run(host=hostname, port=port)
+    ab1 = Process(target=ComandesBehavior, args=(queue,))
+    ab1.start()
+
+    # Run server
+    app.run(host=hostname, port=port, debug=False)
+
+    # Wait behaviors
+    ab1.join()
+    print('The End')

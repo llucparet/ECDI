@@ -1,41 +1,89 @@
+from queue import Queue
+
+import argparse
 import socket
 import time
+import sys
+import os
+sys.path.insert(0, os.path.abspath('../'))
 from multiprocessing import Process
 
 import requests
 from flask import Flask, request
 from rdflib import Namespace, Graph, RDF, Literal, URIRef, XSD
 from SPARQLWrapper import SPARQLWrapper, JSON
-from Utils.ACLMessages import build_message, get_message_properties, send_message
+from Utils.ACLMessages import build_message, get_message_properties, send_message, registerAgent, getAgentInfo
 from Utils.Agent import Agent
 from Utils.Logger import config_logger
 from Utils.OntoNamespaces import ONTO
 from Utils.ACL import ACL
 
+# Definimos los parametros de la linea de comandos
+parser = argparse.ArgumentParser()
+parser.add_argument('--open', help="Define si el servidor est abierto al exterior o no", action='store_true',
+                    default=False)
+parser.add_argument('--port', type=int, help="Puerto de comunicacion del agente")
+parser.add_argument('--dhost', default=socket.gethostname(), help="Host del agente de directorio")
+parser.add_argument('--dport', type=int, help="Puerto de comunicacion del agente de directorio")
+
+# Logging
 logger = config_logger(level=1)
 
-hostname = '0.0.0.0'
-port = 8024
+# parsing de los parametros de la linea de comandos
+args = parser.parse_args()
 
+# Configuration stuff
+if args.port is None:
+    port = 8024
+else:
+    port = args.port
+
+if args.open:
+    hostname = '0.0.0.0'
+else:
+    hostname = socket.gethostname()
+
+if args.dport is None:
+    dport = 9000
+else:
+    dport = args.dport
+
+if args.dhost is None:
+    dhostname = socket.gethostname()
+else:
+    dhostname = args.dhost
+
+# AGENT ATTRIBUTES ----------------------------------------------------------------------------------------
+
+# Agent Namespace
 agn = Namespace("http://www.agentes.org#")
+
+# Message Count
+mss_cnt = 0
+
+# Data Agent
 
 ServeiClients = Agent('ServeiClients',
                       agn.ServeiClients,
                       f'http://{hostname}:{port}/comm',
                       f'http://{hostname}:{port}/Stop')
 
-AgentAssistent = Agent('AgentAssistent',
-                       agn.AgentAssistent,
-                       'http://%s:9011/comm' % hostname,
-                       'http://%s:9011/Stop' % hostname)
+# Directory agent address
+DirectoryAgent = Agent('DirectoryAgent',
+                       agn.Directory,
+                       'http://%s:%d/Register' % (dhostname, dport),
+                       'http://%s:%d/Stop' % (dhostname, dport))
+
+
+# Global triplestore graph
+dsgraph = Graph()
+
+queue = Queue()
 
 app = Flask(__name__)
 
-fuseki_url = 'http://localhost:3030/ONTO/update'
-query_endpoint_url = 'http://localhost:3030/ONTO/query'
-endpoint_url = "http://localhost:3030/ONTO/query"
-mss_cnt = 0
-
+fuseki_url = f'http://{dhostname}:3030/ONTO/update'
+endpoint_url = f"http://{dhostname}:3030/ONTO/query"
 
 def get_count():
     global mss_cnt
@@ -82,7 +130,7 @@ def update_product_rating(nombre_producto, nueva_valoracion, comanda_id):
             ?producto ont:Valoracio ?valoracion .
         }}
     """
-    sparql = SPARQLWrapper(query_endpoint_url)
+    sparql = SPARQLWrapper(endpoint_url)
     sparql.setQuery(sparql_query)
     sparql.setReturnFormat(JSON)
     results = sparql.query().convert()
@@ -303,12 +351,42 @@ def recomenar_productes():
                     g.add((producte, ONTO.Marca, Literal(marca, datatype=XSD.string)))
                     g.add((producte, ONTO.Preu, Literal(preu, datatype=XSD.float)))
 
-                msg = build_message(g, ACL.request, ServeiClients.uri, AgentAssistent.uri, accio, get_count())
-                send_message(msg, AgentAssistent.address)
+                agent_assistent = getAgentInfo(agn.AgentAssistent, DirectoryAgent, ServeiClients, get_count())
+                msg = build_message(g, ACL.request, ServeiClients.uri, agent_assistent.uri, accio, get_count())
+                send_message(msg, agent_assistent.address)
         time.sleep(5)
 
 
+def ClientsBehavior(queue):
+
+    """
+    Agent Behaviour in a concurrent thread.
+    :param queue: the queue
+    :return: something
+    """
+    gr = register_message()
+def register_message():
+    """
+    Envia un mensaje de registro al servicio de registro
+    usando una performativa Request y una accion Register del
+    servicio de directorio
+
+    :param gmess:
+    :return:
+    """
+
+    logger.info('Nos registramos')
+
+    gr = registerAgent(ServeiClients, DirectoryAgent, ServeiClients.uri, get_count(),port)
+    return gr
 if __name__ == '__main__':
-    recomanacio_automatica = Process(target=recomenar_productes, args=())
-    recomanacio_automatica.start()
-    app.run(host=hostname, port=port)
+    ab1 = Process(target=ClientsBehavior, args=(queue,))
+    ab1.start()
+
+    # Run server
+    app.run(host=hostname, port=port, debug=False)
+
+    # Wait behaviors
+    ab1.join()
+    print('The End')
+

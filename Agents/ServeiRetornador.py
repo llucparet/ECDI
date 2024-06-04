@@ -1,8 +1,13 @@
+import argparse
+import socket
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../'))
 from multiprocessing import Queue, Process
 from SPARQLWrapper import SPARQLWrapper, JSON
 from flask import Flask, request
 from rdflib import Graph, Namespace, Literal, RDF, URIRef, XSD
-from Utils.ACLMessages import build_message, send_message, get_message_properties
+from Utils.ACLMessages import build_message, send_message, get_message_properties, registerAgent, getAgentInfo
 from Utils.Agent import Agent
 from Utils.FlaskServer import shutdown_server
 from Utils.Logger import config_logger
@@ -10,37 +15,67 @@ from Utils.OntoNamespaces import ONTO
 from Utils.ACL import ACL
 import datetime
 
+# Definimos los parametros de la linea de comandos
+parser = argparse.ArgumentParser()
+parser.add_argument('--open', help="Define si el servidor est abierto al exterior o no", action='store_true',
+                    default=False)
+parser.add_argument('--port', type=int, help="Puerto de comunicacion del agente")
+parser.add_argument('--dhost', default=socket.gethostname(), help="Host del agente de directorio")
+parser.add_argument('--dport', type=int, help="Puerto de comunicacion del agente de directorio")
+
+# Logging
 logger = config_logger(level=1)
 
-# Configuration stuff
-hostname = '0.0.0.0'
-port = 8030
+# parsing de los parametros de la linea de comandos
+args = parser.parse_args()
 
+# Configuration stuff
+if args.port is None:
+    port = 8030
+else:
+    port = args.port
+
+if args.open:
+    hostname = '0.0.0.0'
+else:
+    hostname = socket.gethostname()
+
+if args.dport is None:
+    dport = 9000
+else:
+    dport = args.dport
+
+if args.dhost is None:
+    dhostname = socket.gethostname()
+else:
+    dhostname = args.dhost
+
+# AGENT ATTRIBUTES ----------------------------------------------------------------------------------------
+
+# Agent Namespace
 agn = Namespace("http://www.agentes.org#")
 
-# Contador de mensajes
+# Message Count
 mss_cnt = 0
 
-ServeiEntrega = Agent('ServeiEntrega', agn.ServeiEntrega, f'http://{hostname}:8000/comm',
-                         f'http://{hostname}:8000/Stop')
+# Data Agent
 
-AgentAssistent = Agent('AgentAssistent',
-                       agn.AgentAssistent,
-                       'http://%s:9011/comm' % hostname,
-                       'http://%s:9011/Stop' % hostname)
+ServeiRetornador = Agent('ServeiRetornador',
+                      agn.ServeiRetornador,
+                      f'http://{hostname}:{port}/comm',
+                      f'http://{hostname}:{port}/Stop')
 
-AgentPagaments = Agent('AgentPagaments',
-                       agn.AgentPagaments,
-                       'http://%s:8001/comm' % hostname,
-                       'http://%s:8001/Stop' % hostname)
+# Directory agent address
+DirectoryAgent = Agent('DirectoryAgent',
+                       agn.Directory,
+                       'http://%s:%d/Register' % (dhostname, dport),
+                       'http://%s:%d/Stop' % (dhostname, dport))
 
-ServeiRetornador = Agent('ServeiRetornador', agn.ServeiRetornador, f'http://{hostname}:8030/comm',
-                         f'http://{hostname}:8030/Stop')
 
 # Global triplestore graph
 dsgraph = Graph()
 
-cola1 = Queue()
+queue = Queue()
 
 # Flask stuff
 app = Flask(__name__)
@@ -136,10 +171,10 @@ def communication():
                     g_pago.add((accion_pago, ONTO.Import, import_producte))
                     g_pago.add((accion_pago, ONTO.ProducteComanda, producte_comanda))
 
-                    print(f"Sending payment message to {ServeiEntrega.uri}")
-                    msg_pago = build_message(g_pago, ACL.request, ServeiRetornador.uri, ServeiEntrega.uri, accion_pago,
+                    servei_entrega = getAgentInfo(agn.ServeEntrega, DirectoryAgent, ServeiRetornador, get_count())
+                    msg_pago = build_message(g_pago, ACL.request, ServeiRetornador.uri, servei_entrega.uri, accion_pago,
                                              get_count())
-                    send_message(msg_pago, ServeiEntrega.address)
+                    send_message(msg_pago, servei_entrega.address)
 
                 else:
                     resolucio = "Rebutjat"
@@ -186,24 +221,39 @@ def communication():
 
 @app.route("/Stop")
 def stop():
-    tidyup()
     shutdown_server()
     return "Parando Servidor"
 
 
-def tidyup():
-    pass
+def RetornadorBehavior(queue):
 
+    """
+    Agent Behaviour in a concurrent thread.
+    :param queue: the queue
+    :return: something
+    """
+    gr = register_message()
+def register_message():
+    """
+    Envia un mensaje de registro al servicio de registro
+    usando una performativa Request y una accion Register del
+    servicio de directorio
 
-def agentbehavior1(cola):
-    pass
+    :param gmess:
+    :return:
+    """
 
+    logger.info('Nos registramos')
 
+    gr = registerAgent(ServeiRetornador, DirectoryAgent, ServeiRetornador.uri, get_count(),port)
+    return gr
 if __name__ == '__main__':
-    ab1 = Process(target=agentbehavior1, args=(cola1,))
+    ab1 = Process(target=RetornadorBehavior, args=(queue,))
     ab1.start()
 
-    app.run(host=hostname, port=port)
+    # Run server
+    app.run(host=hostname, port=port, debug=False)
 
+    # Wait behaviors
     ab1.join()
     print('The End')

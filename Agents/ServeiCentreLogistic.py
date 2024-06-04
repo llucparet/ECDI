@@ -1,12 +1,15 @@
+import argparse
 import multiprocessing
 import sys
+import os
+sys.path.insert(0, os.path.abspath('../'))
 from multiprocessing import Process, Queue
 import socket
 import flask
 from SPARQLWrapper import SPARQLWrapper
 from flask import Flask, request, render_template, redirect, url_for
 from rdflib import Namespace, Graph, RDF, Literal, URIRef, XSD
-from Utils.ACLMessages import build_message, get_message_properties
+from Utils.ACLMessages import build_message, get_message_properties, registerAgent, getAgentInfo
 from Utils.FlaskServer import shutdown_server
 from Utils.Agent import Agent
 from Utils.templates import *
@@ -16,48 +19,72 @@ from Utils.Logger import config_logger
 
 from Utils.ACLMessages import send_message
 
-# Configuración de logging
+# Definimos los parametros de la linea de comandos
+parser = argparse.ArgumentParser()
+parser.add_argument('--open', help="Define si el servidor est abierto al exterior o no", action='store_true',
+                    default=False)
+parser.add_argument('--port', type=int, help="Puerto de comunicacion del agente")
+parser.add_argument('--dhost', default=socket.gethostname(), help="Host del agente de directorio")
+parser.add_argument('--dport', type=int, help="Puerto de comunicacion del agente de directorio")
+
+# Logging
 logger = config_logger(level=1)
 
-# Configuración del agente
-hostname = '0.0.0.0'
-ciutat = None
-# Namespaces para RDF
+# parsing de los parametros de la linea de comandos
+args = parser.parse_args()
+
+if args.open:
+    hostname = '0.0.0.0'
+else:
+    hostname = socket.gethostname()
+
+if args.dport is None:
+    dport = 9000
+else:
+    dport = args.dport
+
+if args.dhost is None:
+    dhostname = socket.gethostname()
+else:
+    dhostname = args.dhost
+
+# AGENT ATTRIBUTES ----------------------------------------------------------------------------------------
+ciutat = ""
+port = 0
+# Agent Namespace
 agn = Namespace("http://www.agentes.org#")
+
+# Message Count
+mss_cnt = 0
+
+# Data Agent
+
+ServeiCentreLogistic = Agent('ServeiCataleg',
+                      agn.ServeiCataleg,
+                      None,
+                      None)
+
+# Directory agent address
+DirectoryAgent = Agent('DirectoryAgent',
+                       agn.Directory,
+                       'http://%s:%d/Register' % (dhostname, dport),
+                       'http://%s:%d/Stop' % (dhostname, dport))
+
+
+# Global triplestore graph
+dsgraph = Graph()
+
+queue = Queue()
 
 # Instancia del Flask app
 app = Flask(__name__, template_folder='../Utils/templates', static_folder='../static')
 
-# Contador de mensajes
-mss_cnt = 0
 
 # Agentes del sistema
 ServeiCentreLogistic = Agent('ServeiCentreLogistic',
                              agn.ServeiCentreLogistic,
                              None,
                              None)
-
-ServeiComandes = Agent('ServeiComandes',
-                       agn.ServeiComandes,
-                       f'http://{hostname}:9012/comm',
-                       f'http://{hostname}:9012/Stop')
-
-ServeiEntrega = Agent('ServeiEntrega',
-                      agn.ServeiEntrega,
-                      f'http://{hostname}:8000/comm',
-                      f'http://{hostname}:8000/Stop')
-
-def asignar_port_agenttrasportista(port):
-    AgentTransportista = Agent('AgTransportista',
-                               agn.AgentTransportista,
-                               f'http://{hostname}:{port}/comm',
-                               f'http://{hostname}:{port}/Stop')
-    return AgentTransportista
-
-AgVendedorExterno = Agent('AgVendedorExterno',
-                        agn.AgVendedorExterno,
-                        'http://%s:9018/comm' % hostname,
-                        'http://%s:9018/Stop' % hostname)
 
 
 # Global triplestore graph
@@ -76,20 +103,7 @@ def get_count():
     mss_cnt += 1
     return mss_cnt
 
-def run_agent(portx, city):
-    @app.route('/')
-    def index():
-        return f"Agent running on port {portx} in city {city}"
 
-    global port
-    port = portx
-    global ciutat
-    ciutat = city
-
-    ServeiCentreLogistic.address = f'http://{hostname}:{port}/comm'
-    ServeiCentreLogistic.stop = f'http://{hostname}:{port}/Stop'
-
-    app.run(host=hostname, port=portx)
 
 @app.route("/comm", methods=['GET'])
 def communication():
@@ -145,12 +159,12 @@ def communication():
 
                 gr.add((lot, ONTO.Pes, Literal(pes_total, datatype=XSD.float)))
 
-                AgentTransportista = asignar_port_agenttrasportista(port + 5)
 
+                agent_transportista = getAgentInfo(agn.AgentTransportista, DirectoryAgent, ServeiCentreLogistic, get_count(), port + 5)
                 msg = build_message(gr, ACL.request, ServeiCentreLogistic.uri,
-                                    AgentTransportista.uri, action, count)
+                                    agent_transportista.uri, action, count)
 
-                resposta = send_message(msg, AgentTransportista.address)
+                resposta = send_message(msg, agent_transportista.address)
 
                 preu_mes_barat = sys.maxsize
                 data = "9999-12-31"
@@ -180,11 +194,11 @@ def communication():
                     gO.add((contraoferta_action, ONTO.Transportista, transportista))
                     gO.add((transportista, ONTO.Nom, Literal(nom_transportista, datatype=XSD.string)))
                     print(port)
-                    AgentTransportista = asignar_port_agenttrasportista(port + 5)
+                    agent_transportista = getAgentInfo(agn.AgentTransportista, DirectoryAgent, ServeiCentreLogistic, get_count(), port + 5)
                     msg = build_message(gO, ACL.request, ServeiCentreLogistic.uri,
-                                        AgentTransportista.uri, contraoferta_action, count)
+                                        agent_transportista.uri, contraoferta_action, count)
 
-                    resposta_contraoferta = send_message(msg, AgentTransportista.address)
+                    resposta_contraoferta = send_message(msg, agent_transportista.address)
 
                     for s, p, o in resposta_contraoferta:
                         print(p)
@@ -223,11 +237,12 @@ def enviar_paquet(gr, transportista, nom_transportista, port):
     genvio.add((accion, ONTO.Lot, lot))
     genvio.add((accion, ONTO.Transportista, transportista))
     genvio.add((transportista, ONTO.Nom, nom_transportista))
-    AgentTransportista = asignar_port_agenttrasportista(port)
-    msg = build_message(genvio, ACL.request, ServeiCentreLogistic.uri,
-                        AgentTransportista.uri, accion, count)
 
-    resposta = send_message(msg, AgentTransportista.address)
+    agent_transportista = getAgentInfo(agn.AgentTransportista, DirectoryAgent, ServeiCentreLogistic, get_count(), port)
+    msg = build_message(genvio, ACL.request, ServeiCentreLogistic.uri,
+                        agent_transportista.uri, accion, count)
+
+    resposta = send_message(msg, agent_transportista.address)
 
     return resposta.serialize(format='xml'), 200
 
@@ -253,16 +268,59 @@ def reclamar_pagament(gr, transportista, nom_transportista, preu, data, producte
     for p in productes:
         genvio.add((lot, ONTO.ProducteLot, p))
 
+    servei_entrega = getAgentInfo(agn.ServeiEntrega, DirectoryAgent, ServeiCentreLogistic, get_count())
     msg = build_message(genvio, ACL.request, ServeiCentreLogistic.uri,
-                        ServeiEntrega.uri, accion, count)
+                        servei_entrega.uri, accion, count)
 
-    resposta = send_message(msg, ServeiEntrega.address)
+    resposta = send_message(msg, servei_entrega.address)
 
     for s, p, o in resposta:
         print(p)
         if p == ONTO.Preu:
             preu = o
     return preu
+
+
+
+
+def CentreLogisticBehavior(queue):
+
+    """
+    Agent Behaviour in a concurrent thread.
+    :param queue: the queue
+    :return: something
+    """
+    gr = register_message()
+def register_message():
+    """
+    Envia un mensaje de registro al servicio de registro
+    usando una performativa Request y una accion Register del
+    servicio de directorio
+
+    :param gmess:
+    :return:
+    """
+    global port
+    logger.info('Nos registramos')
+
+    gr = registerAgent(ServeiCentreLogistic, DirectoryAgent, ServeiCentreLogistic.uri, get_count(),port)
+    return gr
+
+def run_agent(portx, city):
+    global port
+    port = portx
+    global ciutat
+    ciutat = city
+
+    ServeiCentreLogistic.address = f'http://{hostname}:{port}/comm'
+    ServeiCentreLogistic.stop = f'http://{hostname}:{port}/Stop'
+
+    ab1 = Process(target=CentreLogisticBehavior, args=(queue,))
+    ab1.start()
+
+    app.run(host=hostname, port=portx)
+    ab1.join()
+    print('The End')
 
 
 if __name__ == '__main__':
