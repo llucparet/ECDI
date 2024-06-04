@@ -37,7 +37,7 @@ if args.port is None:
 else:
     port = args.port
 
-if args.open:
+if args.open is None:
     hostname = '0.0.0.0'
 else:
     hostname = socket.gethostname()
@@ -116,7 +116,7 @@ def initialize():
             g.add((client, RDF.type, ONTO.Client))
             g.add((client, ONTO.DNI, Literal(DNIusuari)))
             rdf_xml_data = g.serialize(format='xml')
-            fuseki_url = 'http://localhost:3030/ONTO/data'  # Cambia 'dataset' por el nombre de tu dataset
+            fuseki_url = f'http://{dhostname}:3030/ONTO/data'  # Cambia 'dataset' por el nombre de tu dataset
 
             # Cabeceras para la solicitud
             headers = {
@@ -280,7 +280,7 @@ def realizar_compra(products_to_buy, city, priority, creditCard):
         if p == ONTO.ProductesComanda:
             # productos_valorar_no_permitido.append(str(o))
             values = "".join(f"<{o}> ")
-            endpoint_url = "http://localhost:3030/ONTO/query"
+            endpoint_url = f"http://{dhostname}:3030/ONTO/query"
             sparql_query = f"""
                                PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
                                PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
@@ -442,7 +442,7 @@ def ver_comanda(comanda_id):
 
 
 def consultar_comandas(dni):
-    endpoint_url = "http://localhost:3030/ONTO/query"
+    endpoint_url = f"http://{dhostname}:3030/ONTO/query"
     client_uri = f"http://www.semanticweb.org/nilde/ontologies/2024/4/{dni}"
 
     sparql_query_comandas = f"""
@@ -482,7 +482,7 @@ def consultar_comandas(dni):
 
 
 def consultar_productes_comanda(comanda_id, page, products_per_page):
-    endpoint_url = "http://localhost:3030/ONTO/query"
+    endpoint_url = f"http://{dhostname}:3030/ONTO/query"
     comanda_uri = f"http://www.semanticweb.org/nilde/ontologies/2024/4/{comanda_id}"
 
     sparql_query_productes = f"""
@@ -589,7 +589,7 @@ def retornar_producte(comanda_id, producte_nom):
         motivo = request.form['motivo']
 
         # Paso 1: Obtener el ID del producto a partir del nombre del producto
-        endpoint_url = "http://localhost:3030/ONTO/query"
+        endpoint_url = f"http://{dhostname}:3030/ONTO/query"
 
         sparql_query_product_id = f"""
         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
