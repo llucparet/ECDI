@@ -37,10 +37,11 @@ if args.port is None:
 else:
     port = args.port
 
-if args.open is None:
+if args.open:
     hostname = '0.0.0.0'
+    hostadrr = socket.gethostname()
 else:
-    hostname = socket.gethostname()
+    hostadrr = hostname = socket.gethostname()
 
 if args.dport is None:
     dport = 9000
@@ -62,8 +63,8 @@ mss_cnt = 0
 
 # Data Agent
 
-AgentAssistent = Agent('AgentAssistent', agn.AgentAssistent, f'http://{hostname}:{port}/comm',
-                       f'http://{hostname}:{port}/Stop')
+AgentAssistent = Agent('AgentAssistent', agn.AgentAssistent, f'http://{hostadrr}:{port}/comm',
+                       f'http://{hostadrr}:{port}/Stop')
 # Directory agent address
 DirectoryAgent = Agent('DirectoryAgent',
                        agn.Directory,
@@ -327,9 +328,9 @@ def search_products():
                     return render_template('busquedaProductes.html', products=None, usuario=DNIusuari,
                                            busquedafallida=False, errorvaloracio=True,products_enviats=productes_enviats,products_externs=productes_externs)
                 else:
-                    return flask.redirect("http://%s:%d/hacer_pedido" % (hostname, port))
+                    return flask.redirect("http://%s:%d/hacer_pedido" % (hostadrr, port))
             else:
-                return flask.redirect("http://%s:%d/hacer_pedido" % (hostname, port))
+                return flask.redirect("http://%s:%d/hacer_pedido" % (hostadrr, port))
 
 
 def buscar_productos(Nom=None, PreuMin=0.0, PreuMax=10000.0, Marca=None, Valoracio=0.0, Categoria=None):
