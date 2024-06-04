@@ -35,7 +35,7 @@ if args.port is None:
 else:
     port = args.port
 
-if args.open:
+if args.open is None:
     hostname = '0.0.0.0'
 else:
     hostname = socket.gethostname()
@@ -204,7 +204,7 @@ def communication():
 
                 print(f"SPARQL Update Query:\n{update_sparql}")
 
-                sparql_update = SPARQLWrapper("http://localhost:3030/ONTO/update")
+                sparql_update = SPARQLWrapper(f"http://{dhostname}:3030/ONTO/update")
                 sparql_update.setQuery(update_sparql)
                 sparql_update.method = 'POST'
                 sparql_update.setReturnFormat(JSON)

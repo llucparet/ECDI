@@ -35,7 +35,7 @@ if args.port is None:
 else:
     port = args.port
 
-if args.open:
+if args.open is None:
     hostname = '0.0.0.0'
 else:
     hostname = socket.gethostname()
@@ -77,7 +77,7 @@ dsGraph = Graph()
 queue = Queue()
 
 # Fuseki endpoint
-fuseki_url = 'http://localhost:3030/ONTO/query'
+fuseki_url = f'http://{dhostname}:3030/ONTO/query'
 
 # Flask stuff
 

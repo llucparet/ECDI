@@ -36,7 +36,7 @@ if args.port is None:
 else:
     port = args.port
 
-if args.open:
+if args.open is None:
     hostname = '0.0.0.0'
 else:
     hostname = socket.gethostname()
@@ -128,7 +128,7 @@ def handle_search_request(gm, content):
 
 
 def buscar_productos(**filters):
-    endpoint_url = "http://localhost:3030/ONTO/query"
+    endpoint_url = f"http://{dhostname}:3030/ONTO/query"
     graph = Graph()
     conditions = []
 

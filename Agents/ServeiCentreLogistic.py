@@ -33,7 +33,7 @@ logger = config_logger(level=1)
 # parsing de los parametros de la linea de comandos
 args = parser.parse_args()
 
-if args.open:
+if args.open is None:
     hostname = '0.0.0.0'
 else:
     hostname = socket.gethostname()
@@ -91,7 +91,7 @@ ServeiCentreLogistic = Agent('ServeiCentreLogistic',
 dsgraph = Graph()
 
 # Configuración de Fuseki
-fuseki_server = 'http://localhost:3030/ds'
+fuseki_server = f'http://{dhostname}:3030/ds'
 sparql = SPARQLWrapper(fuseki_server)
 
 cola1 = Queue()

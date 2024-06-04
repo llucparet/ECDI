@@ -50,6 +50,7 @@ dsgraph.bind('rdf', RDF)
 dsgraph.bind('rdfs', RDFS)
 dsgraph.bind('foaf', FOAF)
 dsgraph.bind('dso', DSO)
+dsgraph.bind('ont', ONTO)
 
 agn = Namespace("http://www.agentes.org#")
 DirectoryAgent = Agent('DirectoryAgent',
@@ -116,8 +117,18 @@ def register():
         logger.info('Peticion de busqueda')
 
         agn_type = gm.value(subject=content, predicate=DSO.AgentType)
-        rsearch = dsgraph.triples((None, DSO.AgentType, agn_type))
+        rsearch = list(dsgraph.triples((None, DSO.AgentType, agn_type)))
 
+        for element in rsearch:
+            print("Elemento encontrado: ")
+            print(element)
+
+
+            """
+        for s, p, o in dsgraph:
+            print(s, p, o)
+            """
+        print("Buscando agente de tipo: " + str(agn_type))
         if rsearch is not None:
             if str(agn_type) == 'http://www.agentes.org#ServeiCentreLogistic':
                 port = gm.value(subject=content, predicate=ONTO.Port)
@@ -128,7 +139,8 @@ def register():
                 research2 = dsgraph.triples((None, ONTO.Port, port))
                 agn_uri = next(research2)[0]
             else:
-                agn_uri = next(rsearch)[0]
+                agn_uri = next(iter(rsearch))[0]
+
             agn_add = dsgraph.value(subject=agn_uri, predicate=DSO.Address)
             agn_name = dsgraph.value(subject=agn_uri, predicate=FOAF.name)
             gr = Graph()
@@ -138,6 +150,8 @@ def register():
             gr.add((rsp_obj, DSO.Uri, agn_uri))
             gr.add((rsp_obj, FOAF.name, agn_name))
             logger.info("Agente encontrado: " + agn_name)
+            print("Agente encontrado: " + agn_name)
+            print(rsp_obj)
             return build_message(gr,
                                  ACL.inform,
                                  sender=DirectoryAgent.uri,
@@ -146,6 +160,7 @@ def register():
                                  content=rsp_obj)
         else:
             # Si no encontramos nada retornamos un inform sin contenido
+            print("No encontrado")
             return build_message(Graph(),
                                  ACL.inform,
                                  sender=DirectoryAgent.uri,

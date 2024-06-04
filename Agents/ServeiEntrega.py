@@ -35,7 +35,7 @@ if args.port is None:
 else:
     port = args.port
 
-if args.open:
+if args.open is None:
     hostname = '0.0.0.0'
 else:
     hostname = socket.gethostname()
@@ -98,7 +98,7 @@ def registrar_transaccio(pagador, cobrador, producte, preu):
 
     # Serializar el grafo a formato RDF/XML
     rdf_xml_data_comanda = g.serialize(format='xml')
-    fuseki_url = 'http://localhost:3030/ONTO/data'  # Asegúrate de tener la URL correcta
+    fuseki_url = f'http://{dhostname}:3030/ONTO/data'  # Asegúrate de tener la URL correcta
 
     # Cabeceras para la solicitud
     headers = {
@@ -253,7 +253,7 @@ def communication():
                     print(nom_producte)
                     gr.add((producte, ONTO.Nom, Literal(nom_producte)))
 
-                    fuseki_url = 'http://localhost:3030/ONTO/update'
+                    fuseki_url = f'http://{dhostname}:3030/ONTO/update'
 
 
                     # Defineix la consulta SPARQL amb les variables

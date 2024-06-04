@@ -42,7 +42,7 @@ if args.port is None:
 else:
     port = args.port
 
-if args.open:
+if args.open is None:
     hostname = '0.0.0.0'
 else:
     hostname = socket.gethostname()
@@ -67,8 +67,8 @@ mss_cnt = 0
 
 # Data Agent
 
-ServeiComandes = Agent('ServeiCataleg',
-                      agn.Comandes,
+ServeiComandes = Agent('ServeiComandes',
+                      agn.ServeiComandes,
                       f'http://{hostname}:{port}/comm',
                       f'http://{hostname}:{port}/Stop')
 
@@ -200,7 +200,7 @@ def registrar_comanda(id, ciutat, client, preu_total, prioritat, credit_card, pr
 
     # Serializar el grafo a formato RDF/XML
     rdf_xml_data_comanda = g_comanda.serialize(format='xml')
-    fuseki_url = 'http://localhost:3030/ONTO/data'  # Asegúrate de tener la URL correcta
+    fuseki_url = f'http://{dhostname}:3030/ONTO/data'  # Asegúrate de tener la URL correcta
 
     # Cabeceras para la solicitud
     headers = {
