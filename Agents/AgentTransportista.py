@@ -1,16 +1,4 @@
-"""
-Agente Transportista
 
-Esqueleto de agente usando los servicios web de Flask
-
-/comm es la entrada para la recepcion de mensajes del agente
-/Stop es la entrada que para el agente
-
-Tiene una funcion AgentBehavior1 que se lanza como un thread concurrente
-
-
-@author: pau-laia-anna
-"""
 import multiprocessing
 import time, random
 import argparse

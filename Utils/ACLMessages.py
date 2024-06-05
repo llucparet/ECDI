@@ -61,7 +61,6 @@ def send_message(gmess, address):
     """
     msg = gmess.serialize(format='xml')
     print('Enviando mensaje')
-    print(msg)
     print(address)
     r = requests.get(address, params={'content': msg})
 

@@ -1,13 +1,10 @@
-from queue import Queue
-
 import argparse
 import socket
 import time
 import sys
 import os
+from multiprocessing import Process, Queue
 sys.path.insert(0, os.path.abspath('../'))
-from multiprocessing import Process
-
 import requests
 from flask import Flask, request
 from rdflib import Namespace, Graph, RDF, Literal, URIRef, XSD
@@ -75,7 +72,6 @@ DirectoryAgent = Agent('DirectoryAgent',
                        'http://%s:%d/Register' % (dhostname, dport),
                        'http://%s:%d/Stop' % (dhostname, dport))
 
-
 # Global triplestore graph
 dsgraph = Graph()
 
@@ -85,6 +81,7 @@ app = Flask(__name__)
 
 fuseki_url = f'http://{dhostname}:3030/ONTO/update'
 endpoint_url = f"http://{dhostname}:3030/ONTO/query"
+
 
 def get_count():
     global mss_cnt
@@ -139,10 +136,8 @@ def update_product_rating(nombre_producto, nueva_valoracion, comanda_id):
     total_valoraciones = nueva_valoracion
     print(total_valoraciones)
 
-
     for result in results["results"]["bindings"]:
         total_valoraciones += float(result["valoracion"]["value"])
-
 
     nuevo_promedio = total_valoraciones / 2
 
@@ -198,7 +193,7 @@ def update_producte_comanda_rating(comanda_id, nom_producte, nueva_valoracion):
             ?producteComanda ont:Nom "{nom_producte}" .
 
             OPTIONAL {{ ?producteComanda ont:Valoracio ?oldValoracio . }}
-        
+
         }}
     """
     headers = {
@@ -253,7 +248,7 @@ def recomenar_productes():
             sparql_query = f"""
                 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
                 PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
-                
+
                 SELECT ?producte_comanda ?nom ?valoracio
                 WHERE {{
                     ?comanda rdf:type ont:Comanda .
@@ -263,7 +258,7 @@ def recomenar_productes():
                     ?producte_comanda ont:Nom ?nom .
                     ?producte_comanda ont:Valoracio ?valoracio .
                     VALUES ?client {{ <{u}> }}
-                
+
                   }}
             """
             print(sparql_query)
@@ -283,7 +278,7 @@ def recomenar_productes():
                         sparql_query = f"""
                                             PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
                                             PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
-            
+
                                             SELECT ?categoria ?marca
                                             WHERE {{
                                                 ?producte rdf:type ont:Producte .
@@ -309,7 +304,8 @@ def recomenar_productes():
             if categorias and marques:
                 categories_filter = ' || '.join([f'?categoria = "{categoria}"' for categoria in categorias])
                 # Generar la part del filtre per les marques
-                marques_filter = ' || '.join([f'?marca = "{marca}"' for marca in marques])
+                marques_filter = ' || '.join([f'?marca = "{marca}"' for marca in
+                marques])
 
                 # Unir les parts del filtre amb un operador OR
                 filtre = ''
@@ -322,7 +318,7 @@ def recomenar_productes():
                 sparql_query = f"""
                     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
                     PREFIX ont: <http://www.semanticweb.org/nilde/ontologies/2024/4/>
-            
+
                     SELECT ?nom ?categoria ?marca ?preu
                     WHERE {{
                         ?producte rdf:type ont:Producte .
@@ -359,35 +355,37 @@ def recomenar_productes():
 
 
 def ClientsBehavior(queue):
-
     """
     Agent Behaviour in a concurrent thread.
     :param queue: the queue
     :return: something
     """
-    gr = register_message()
+    register_message()
+
+
 def register_message():
     """
     Envia un mensaje de registro al servicio de registro
     usando una performativa Request y una accion Register del
     servicio de directorio
-
     :param gmess:
     :return:
     """
-
     logger.info('Nos registramos')
-
-    gr = registerAgent(ServeiClients, DirectoryAgent, ServeiClients.uri, get_count(),port)
+    gr = registerAgent(ServeiClients, DirectoryAgent, ServeiClients.uri, get_count(), port)
+    recomanacio_automatica = Process(target=recomenar_productes, args=())
+    recomanacio_automatica.start()
     return gr
+
+
 if __name__ == '__main__':
+    # Run agent behavior in a separate process
     ab1 = Process(target=ClientsBehavior, args=(queue,))
     ab1.start()
 
-    # Run server
+    # Run server in the main process
     app.run(host=hostname, port=port, debug=False)
 
-    # Wait behaviors
+    # Wait for the agent behavior process to finish
     ab1.join()
     print('The End')
-

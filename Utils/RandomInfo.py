@@ -136,7 +136,7 @@ def generar_comandas_aleatorias(g, productos, dni_cliente='41', num_comandas=5):
             g.add((producte_comanda_uri, NS.Retornat, Literal("Pendiente", datatype=XSD.string)))
             g.add((producte_comanda_uri, NS.TransportistaProducte, Literal(transportista, datatype=XSD.string)))
             g.add((producte_comanda_uri, NS.Empresa, Literal(producte['Empresa'], datatype=XSD.string)))
-            g.add((producte_comanda_uri, NS.Valoracio, Literal(producte['Valoracio'], datatype=XSD.float)))
+            g.add((producte_comanda_uri, NS.Valoracio, Literal('Pendiente')))
             g.add((producte_comanda_uri, NS.Pes, Literal(producte['Pes'], datatype=XSD.float)))
             g.add((producte_comanda_uri, NS.Categoria, Literal(producte['Categoria'], datatype=XSD.string)))
             g.add((producte_comanda_uri, NS.Marca, Literal(producte['Marca'], datatype=XSD.string)))
